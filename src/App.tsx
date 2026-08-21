@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { OcarinaScene } from './components/OcarinaScene'
 import { Staff } from './components/Staff'
+import { FIRST_FLIGHT } from './core/exercises'
 import { DEFAULT_INSTRUMENT_PROFILE } from './core/instrumentProfiles'
-import { resolveNote } from './core/notes'
+import { resolveNote, type OcarinaNote } from './core/notes'
 import { useBreathInput } from './hooks/useBreathInput'
 import { useGamepad } from './hooks/useGamepad'
 import { useKeyboardButtons } from './hooks/useKeyboardButtons'
@@ -21,6 +22,7 @@ const KEYBOARD_LABELS: Record<number, string> = {
 
 export default function App() {
   const profile = DEFAULT_INSTRUMENT_PROFILE
+  const exercise = FIRST_FLIGHT
   const gamepad = useGamepad()
   const keyboardButtons = useKeyboardButtons()
   const breath = useBreathInput()
@@ -29,6 +31,14 @@ export default function App() {
     [gamepad.pressedButtons, keyboardButtons],
   )
   const currentNote = resolveNote(pressedButtons, profile.notes)
+  const sequence = useMemo(
+    () => exercise.steps.reduce<OcarinaNote[]>((notes, step) => {
+      const note = profile.notes.find((candidate) => candidate.name === step.note)
+      if (note) notes.push(note)
+      return notes
+    }, []),
+    [exercise.steps, profile.notes],
+  )
 
   const [targetIndex, setTargetIndex] = useState(0)
   const [feedback, setFeedback] = useState('Toca la nota objetivo para comenzar.')
@@ -36,9 +46,8 @@ export default function App() {
   const [breathRequired, setBreathRequired] = useState(false)
   const [breathThreshold, setBreathThreshold] = useState(0.12)
   const audioContext = useRef<AudioContext | null>(null)
-  const oscillatorRef = useRef<OscillatorNode | null>(null)
   const gainRef = useRef<GainNode | null>(null)
-  const target = profile.notes[targetIndex]
+  const target = sequence[targetIndex] ?? profile.notes[0]
   const isBlowing = breath.enabled && breath.level >= breathThreshold
   const performedNote = currentNote && (!breathRequired || isBlowing) ? currentNote : null
 
@@ -73,14 +82,12 @@ export default function App() {
     oscillator.connect(gain)
     gain.connect(context.destination)
     oscillator.start()
-    oscillatorRef.current = oscillator
     gainRef.current = gain
 
     return () => {
       gain.gain.cancelScheduledValues(context.currentTime)
       gain.gain.setTargetAtTime(0.0001, context.currentTime, 0.018)
       oscillator.stop(context.currentTime + 0.08)
-      oscillatorRef.current = null
       gainRef.current = null
     }
   }, [audioEnabled, currentNote])
@@ -114,14 +121,15 @@ export default function App() {
       return
     }
 
-    setFeedback(`✓ ${performedNote.name} correcta`)
+    const phraseComplete = targetIndex === sequence.length - 1
+    setFeedback(phraseComplete ? `✓ ${performedNote.name} · frase completa` : `✓ ${performedNote.name} correcta`)
     const timer = window.setTimeout(() => {
-      setTargetIndex((index) => (index + 1) % profile.notes.length)
-      setFeedback('Siguiente nota…')
-    }, 420)
+      setTargetIndex((index) => (phraseComplete ? 0 : index + 1))
+      setFeedback(phraseComplete ? 'Otra vuelta. Desde el principio…' : 'Siguiente nota…')
+    }, phraseComplete ? 760 : 420)
 
     return () => window.clearTimeout(timer)
-  }, [breathRequired, currentNote, isBlowing, performedNote, profile.notes.length, target.name])
+  }, [breathRequired, currentNote, isBlowing, performedNote, sequence.length, target.name, targetIndex])
 
   const holes = currentNote?.holes ?? Array(profile.holeCount).fill(false)
 
@@ -146,7 +154,13 @@ export default function App() {
         </div>
       </header>
 
-      <Staff target={target} played={performedNote} />
+      <Staff
+        sequence={sequence}
+        activeIndex={targetIndex}
+        played={performedNote}
+        title={exercise.title}
+        bpm={exercise.bpm}
+      />
 
       <section className="workspace">
         <div className="scene-panel">
