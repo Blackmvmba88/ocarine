@@ -21,12 +21,14 @@ export function Staff({
   played,
   title,
   bpm,
+  controlLabelFor,
 }: {
   sequence: OcarinaNote[]
   activeIndex: number
   played: OcarinaNote | null
   title: string
   bpm: number
+  controlLabelFor: (noteName: string) => string
 }) {
   const active = sequence[activeIndex] ?? sequence[0]
   const usableWidth = 600
@@ -39,7 +41,7 @@ export function Staff({
       <div className="staff-copy">
         <span className="eyebrow">PENTAGRAMA / EJERCICIO</span>
         <strong>{active?.name ?? '—'}</strong>
-        <span>{title} · {bpm} BPM · {active?.controlLabel ?? 'Sin objetivo'}</span>
+        <span>{title} · {bpm} BPM · {active ? controlLabelFor(active.name) : 'Sin objetivo'}</span>
         <small>{played ? `Tú: ${played.name}` : 'Esperando ejecución…'}</small>
       </div>
 
@@ -60,7 +62,7 @@ export function Staff({
               {note.name === 'C4' && <line x1={x - 20} x2={x + 20} y1="104" y2="104" className="ledger-line" />}
               <ellipse cx={x} cy={y} rx="11" ry="8" transform={`rotate(-16 ${x} ${y})`} />
               <line x1={x + 10} x2={x + 10} y1={y} y2={y - 36} className="sequence-stem" />
-              <text x={x} y="145" textAnchor="middle" className="sequence-control">{shortControlLabel(note.controlLabel)}</text>
+              <text x={x} y="145" textAnchor="middle" className="sequence-control">{shortControlLabel(controlLabelFor(note.name))}</text>
               <text x={x} y="160" textAnchor="middle" className="sequence-name">{note.name}</text>
             </g>
           )
