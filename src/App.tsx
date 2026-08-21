@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { OcarinaScene } from './components/OcarinaScene'
 import { Staff } from './components/Staff'
 import { useGamepad } from './hooks/useGamepad'
+import { useMicrophoneBreath } from './hooks/useMicrophoneBreath'
 import { useOcarinaAudio } from './hooks/useOcarinaAudio'
-import { holesToText, resolveNote, type HoleState } from './music/fingerings'
+import { holesToText, PRACTICE_TARGETS, resolveNote, type HoleState } from './music/fingerings'
 
 const BUTTON_LABELS = ['A', 'B', 'X', 'Y']
 const KEY_BY_HOLE = ['1', '2', '3', '4']
@@ -14,17 +15,24 @@ function emptyHoles(): HoleState {
 
 export default function App() {
   const gamepad = useGamepad()
+  const microphone = useMicrophoneBreath()
   const [keyboardHoles, setKeyboardHoles] = useState<HoleState>(emptyHoles)
   const [keyboardBreath, setKeyboardBreath] = useState(0)
+  const [learnMode, setLearnMode] = useState(false)
+  const [targetIndex, setTargetIndex] = useState(0)
+  const [hits, setHits] = useState(0)
 
   const holes = useMemo<HoleState>(
     () => keyboardHoles.map((closed, index) => closed || gamepad.holes[index]) as HoleState,
     [keyboardHoles, gamepad.holes],
   )
-  const breath = Math.max(keyboardBreath, gamepad.breath)
+
+  const breath = Math.max(keyboardBreath, gamepad.breath, microphone.level)
   const note = useMemo(() => resolveNote(holes), [holes])
+  const target = PRACTICE_TARGETS[targetIndex]
   const { enabled: audioEnabled, enableAudio } = useOcarinaAudio(note.frequency, breath)
   const active = audioEnabled && breath > 0.03
+  const targetMatched = learnMode && active && note.name === target.note.name
 
   const setHole = (index: number, value: boolean) => {
     setKeyboardHoles((previous) => {
@@ -33,6 +41,17 @@ export default function App() {
       return next
     })
   }
+
+  useEffect(() => {
+    if (!targetMatched) return
+
+    const timer = window.setTimeout(() => {
+      setHits((value) => value + 1)
+      setTargetIndex((index) => (index + 1) % PRACTICE_TARGETS.length)
+    }, 420)
+
+    return () => window.clearTimeout(timer)
+  }, [targetMatched, targetIndex])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -84,6 +103,31 @@ export default function App() {
 
       <Staff note={note} active={active} />
 
+      <section className={`learn-card ${targetMatched ? 'matched' : ''}`}>
+        <div>
+          <p className="eyebrow">LEARN MODE</p>
+          <h2>{learnMode ? `Play ${target.note.name} / ${target.note.label}` : 'Guided note practice'}</h2>
+          <p className="learn-copy">
+            {learnMode
+              ? `Target fingering: ${holesToText(target.holes)} · hold the fingering and blow.`
+              : 'Turn it on and the tutor will advance only when the requested note is actually played.'}
+          </p>
+        </div>
+        <div className="learn-actions">
+          {learnMode && <strong className="score">HITS {hits}</strong>}
+          <button
+            className="mode-button"
+            onClick={() => {
+              setLearnMode((value) => !value)
+              setTargetIndex(0)
+              setHits(0)
+            }}
+          >
+            {learnMode ? 'STOP LEARN' : 'START LEARN'}
+          </button>
+        </div>
+      </section>
+
       <section className="instrument-grid">
         <div className="scene-card">
           <OcarinaScene holes={holes} />
@@ -107,12 +151,28 @@ export default function App() {
 
           <div className="telemetry-list">
             <span>Fingering <b>{holesToText(holes)}</b></span>
-            <span>Input <b>{gamepad.connected ? 'Gamepad + keyboard' : 'Keyboard / touch'}</b></span>
+            <span>Gamepad <b>{gamepad.connected ? 'Connected' : 'Offline'}</b></span>
+            <span>Microphone <b>{microphone.enabled ? `${Math.round(microphone.level * 100)}%` : 'Off'}</b></span>
           </div>
 
-          <button className="audio-button" onClick={enableAudio} disabled={audioEnabled}>
-            {audioEnabled ? 'AUDIO ENGINE ARMED' : 'ARM AUDIO ENGINE'}
-          </button>
+          <div className="engine-actions">
+            <button className="audio-button" onClick={enableAudio} disabled={audioEnabled}>
+              {audioEnabled ? 'AUDIO ENGINE ARMED' : 'ARM AUDIO ENGINE'}
+            </button>
+            <button
+              className="mic-button"
+              onClick={() => void microphone.enableMicrophone()}
+              disabled={!microphone.supported || microphone.enabled}
+            >
+              {!microphone.supported
+                ? 'MIC NOT AVAILABLE'
+                : microphone.enabled
+                  ? 'MIC BREATH ARMED'
+                  : 'ARM MICROPHONE BREATH'}
+            </button>
+          </div>
+
+          {microphone.error && <p className="mic-error">{microphone.error}</p>}
         </aside>
       </section>
 
@@ -153,7 +213,7 @@ export default function App() {
         </div>
 
         <p className="hint">
-          Gamepad: A/B/X/Y close the four holes, R2 controls breath. Keyboard: 1/2/3/4 + Space.
+          Gamepad: A/B/X/Y close the four holes, R2 controls breath. Keyboard: 1/2/3/4 + Space. Microphone breath can replace R2/Space after permission is granted.
         </p>
       </section>
     </main>
