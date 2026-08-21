@@ -24,15 +24,28 @@ button { cursor: pointer; }
 
 .staff-card, .mapping-card { border: 1px solid #232323; background: #0d0d0de8; backdrop-filter: blur(16px); border-radius: 24px; }
 .staff-card { display: grid; grid-template-columns: 210px 1fr; gap: 14px; align-items: center; padding: 18px 22px; }
+.staff-card.sequence-mode { grid-template-columns: 250px minmax(0, 1fr); }
 .staff-copy strong { display: block; margin-top: 8px; font-size: 46px; }
-.staff-copy > span:last-child { color: #a9a9a9; }
+.staff-copy > span:last-of-type { color: #a9a9a9; }
+.staff-copy small { display: block; margin-top: 8px; color: #707070; }
 .staff { width: 100%; height: 150px; }
+.practice-staff { height: 170px; overflow: visible; }
 .staff-line, .ledger-line { stroke: #525252; stroke-width: 1.6; }
 .target-note { fill: #ff4f9a; }
 .note-stem { stroke: #ff4f9a; stroke-width: 3; }
 .played-note { fill: #f3f3f3; }
 .played-stem { stroke: #f3f3f3; stroke-width: 2.5; }
 .staff-label { fill: #777; font-size: 9px; font-weight: 800; letter-spacing: .16em; }
+.playhead-line { stroke: #ff4f9a; stroke-width: 1.4; stroke-dasharray: 4 5; opacity: .7; }
+.sequence-note ellipse { fill: #555; transition: fill .15s ease, filter .15s ease; }
+.sequence-note .sequence-stem { stroke: #555; stroke-width: 2.2; }
+.sequence-note.complete ellipse { fill: #8a8a8a; }
+.sequence-note.complete .sequence-stem { stroke: #8a8a8a; }
+.sequence-note.active ellipse { fill: #ff4f9a; filter: drop-shadow(0 0 6px #ff4f9aaa); }
+.sequence-note.active .sequence-stem { stroke: #ff4f9a; stroke-width: 3; }
+.sequence-control { fill: #bdbdbd; font-size: 11px; font-weight: 800; }
+.sequence-name { fill: #666; font-size: 9px; font-weight: 700; }
+.sequence-note.active .sequence-control, .sequence-note.active .sequence-name { fill: #ff9bc5; }
 
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; margin-top: 16px; }
 .scene-panel, .telemetry { border: 1px solid #232323; background: #0b0b0b; border-radius: 24px; overflow: hidden; }
@@ -82,7 +95,7 @@ button { cursor: pointer; }
 
 @media (max-width: 900px) {
   .workspace, .mapping-card { grid-template-columns: 1fr; }
-  .staff-card { grid-template-columns: 1fr; }
+  .staff-card, .staff-card.sequence-mode { grid-template-columns: 1fr; }
   .mapping-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ocarina-canvas { min-height: 360px; }
 }
@@ -93,4 +106,6 @@ button { cursor: pointer; }
   .hero-actions { width: 100%; justify-content: flex-start; }
   .mapping-grid { grid-template-columns: 1fr 1fr; }
   .readout strong { font-size: 52px; }
+  .practice-staff { min-width: 620px; }
+  .staff-card.sequence-mode { overflow-x: auto; }
 }
