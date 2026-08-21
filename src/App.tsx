@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { OcarinaScene } from './components/OcarinaScene'
 import { Staff } from './components/Staff'
+import {
+  CONTROL_PROFILES,
+  DEFAULT_CONTROL_PROFILE,
+  getBinding,
+  resolveNoteFromControlProfile,
+} from './core/controlProfiles'
 import { FIRST_FLIGHT } from './core/exercises'
 import { DEFAULT_INSTRUMENT_PROFILE } from './core/instrumentProfiles'
-import { resolveNote, type OcarinaNote } from './core/notes'
+import type { OcarinaNote } from './core/notes'
 import { useBreathInput } from './hooks/useBreathInput'
 import { useGamepad } from './hooks/useGamepad'
 import { useKeyboardButtons } from './hooks/useKeyboardButtons'
@@ -26,11 +32,13 @@ export default function App() {
   const gamepad = useGamepad()
   const keyboardButtons = useKeyboardButtons()
   const breath = useBreathInput()
+  const [controlProfileId, setControlProfileId] = useState(DEFAULT_CONTROL_PROFILE.id)
+  const controlProfile = CONTROL_PROFILES.find((candidate) => candidate.id === controlProfileId) ?? DEFAULT_CONTROL_PROFILE
   const pressedButtons = useMemo(
     () => [...new Set([...gamepad.pressedButtons, ...keyboardButtons])],
     [gamepad.pressedButtons, keyboardButtons],
   )
-  const currentNote = resolveNote(pressedButtons, profile.notes)
+  const currentNote = resolveNoteFromControlProfile(pressedButtons, profile.notes, controlProfile)
   const sequence = useMemo(
     () => exercise.steps.reduce<OcarinaNote[]>((notes, step) => {
       const note = profile.notes.find((candidate) => candidate.name === step.note)
@@ -50,6 +58,7 @@ export default function App() {
   const target = sequence[targetIndex] ?? profile.notes[0]
   const isBlowing = breath.enabled && breath.level >= breathThreshold
   const performedNote = currentNote && (!breathRequired || isBlowing) ? currentNote : null
+  const controlLabelFor = (noteName: string) => getBinding(controlProfile, noteName)?.label ?? noteName
 
   const enableAudio = async () => {
     if (!audioContext.current) audioContext.current = new AudioContext()
@@ -160,6 +169,7 @@ export default function App() {
         played={performedNote}
         title={exercise.title}
         bpm={exercise.bpm}
+        controlLabelFor={controlLabelFor}
       />
 
       <section className="workspace">
@@ -179,6 +189,15 @@ export default function App() {
               <strong>{gamepad.connected ? 'Conectado' : 'Esperando control'}</strong>
             </div>
           </div>
+
+          <label className="control-profile-card">
+            <small>CONTROL PROFILE</small>
+            <select value={controlProfileId} onChange={(event) => setControlProfileId(event.target.value)}>
+              {CONTROL_PROFILES.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>{candidate.name}</option>
+              ))}
+            </select>
+          </label>
 
           <div className="readout">
             <span>NOTA ACTUAL</span>
@@ -241,17 +260,20 @@ export default function App() {
         <div>
           <span className="eyebrow">MAPA DE EJECUCIÓN</span>
           <h2>Conecta el control y toca.</h2>
-          <p>También puedes probar inmediatamente con Z X C V y las flechas del teclado.</p>
+          <p>Elige la familia del control para que los símbolos visibles coincidan con tu gamepad. El teclado sigue disponible como fallback.</p>
         </div>
 
         <div className="mapping-grid">
-          {profile.notes.map((note) => (
-            <div className={currentNote?.name === note.name ? 'mapping active' : 'mapping'} key={note.name}>
-              <strong>{note.name}</strong>
-              <span>{note.controlLabel}</span>
-              <kbd>{KEYBOARD_LABELS[note.button]}</kbd>
-            </div>
-          ))}
+          {profile.notes.map((note) => {
+            const binding = getBinding(controlProfile, note.name)
+            return (
+              <div className={currentNote?.name === note.name ? 'mapping active' : 'mapping'} key={note.name}>
+                <strong>{note.name}</strong>
+                <span>{binding?.label ?? 'Sin asignar'}</span>
+                <kbd>{binding ? KEYBOARD_LABELS[binding.button] ?? '—' : '—'}</kbd>
+              </div>
+            )
+          })}
         </div>
       </section>
     </main>
