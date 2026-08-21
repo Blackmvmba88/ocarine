@@ -31,7 +31,10 @@ button { font: inherit; }
 .controls-row,
 .staff-meta,
 .scene-caption,
-.meter-row {
+.meter-row,
+.learn-card,
+.learn-actions,
+.engine-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -76,7 +79,8 @@ h2 { margin-bottom: 0; font-size: 1.35rem; }
 .staff-card,
 .scene-card,
 .telemetry-card,
-.controller-card {
+.controller-card,
+.learn-card {
   border: 1px solid #202631;
   background: rgba(13, 16, 22, 0.88);
   box-shadow: 0 18px 60px rgba(0,0,0,.25);
@@ -102,6 +106,34 @@ h2 { margin-bottom: 0; font-size: 1.35rem; }
   color: #969fb0;
 }
 .staff-meta strong { color: #fff; font-size: 1.15rem; }
+
+.learn-card {
+  margin-top: 18px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.learn-card.matched {
+  border-color: #67f58e;
+  background: rgba(18, 45, 28, .92);
+  box-shadow: 0 0 34px rgba(103,245,142,.12);
+}
+.learn-copy { margin: 8px 0 0; color: #8f98aa; font-size: .86rem; }
+.learn-actions { justify-content: flex-end; }
+.score { color: #9dffb4; font-size: .78rem; letter-spacing: .14em; }
+.mode-button,
+.mic-button {
+  min-height: 44px;
+  border: 1px solid #303846;
+  border-radius: 12px;
+  background: #171c24;
+  color: #eef1f7;
+  padding: 0 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.mode-button:hover,
+.mic-button:hover:not(:disabled) { border-color: #67f58e; color: #9dffb4; }
 
 .instrument-grid {
   display: grid;
@@ -168,8 +200,14 @@ h2 { margin-bottom: 0; font-size: 1.35rem; }
 .telemetry-list span { display: flex; justify-content: space-between; gap: 10px; }
 .telemetry-list b { color: #eef1f7; text-align: right; }
 
-.audio-button {
+.engine-actions {
   margin-top: auto;
+  padding-top: 24px;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 10px;
+}
+.audio-button {
   min-height: 52px;
   border: 0;
   border-radius: 14px;
@@ -179,6 +217,9 @@ h2 { margin-bottom: 0; font-size: 1.35rem; }
   cursor: pointer;
 }
 .audio-button:disabled { background: #1c3a27; color: #9ce8b1; cursor: default; }
+.mic-button { min-height: 48px; width: 100%; }
+.mic-button:disabled { opacity: .55; cursor: default; }
+.mic-error { margin: 10px 0 0; color: #ff9b9b; font-size: .76rem; }
 
 .controller-card {
   margin-top: 18px;
@@ -232,7 +273,8 @@ h2 { margin-bottom: 0; font-size: 1.35rem; }
 .hint { margin: 18px 0 0; color: #7f8899; font-size: .8rem; }
 
 @media (max-width: 900px) {
-  .topbar, .controller-heading { align-items: flex-start; flex-direction: column; }
+  .topbar, .controller-heading, .learn-card { align-items: flex-start; flex-direction: column; }
+  .learn-actions { width: 100%; justify-content: space-between; }
   .instrument-grid { grid-template-columns: 1fr; }
   .telemetry-card { min-height: 420px; }
   .controls-row { align-items: stretch; flex-direction: column; }
