@@ -22,7 +22,9 @@ export function useGamepad(): GamepadState {
   useEffect(() => {
     const poll = () => {
       const pads = navigator.getGamepads?.() ?? []
-      const pad = Array.from(pads).find(Boolean)
+      const pad = Array.from(pads).find(
+        (candidate): candidate is Gamepad => candidate !== null,
+      )
 
       if (!pad) {
         setState(EMPTY_STATE)
