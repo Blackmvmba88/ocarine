@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { OcarinaScene } from './components/OcarinaScene'
 import { Staff } from './components/Staff'
-import { OCARINA_NOTES, resolveNote } from './core/notes'
+import { DEFAULT_INSTRUMENT_PROFILE } from './core/instrumentProfiles'
+import { resolveNote } from './core/notes'
+import { useBreathInput } from './hooks/useBreathInput'
 import { useGamepad } from './hooks/useGamepad'
 import { useKeyboardButtons } from './hooks/useKeyboardButtons'
 import './styles.css'
@@ -18,24 +20,43 @@ const KEYBOARD_LABELS: Record<number, string> = {
 }
 
 export default function App() {
+  const profile = DEFAULT_INSTRUMENT_PROFILE
   const gamepad = useGamepad()
   const keyboardButtons = useKeyboardButtons()
+  const breath = useBreathInput()
   const pressedButtons = useMemo(
     () => [...new Set([...gamepad.pressedButtons, ...keyboardButtons])],
     [gamepad.pressedButtons, keyboardButtons],
   )
-  const currentNote = resolveNote(pressedButtons)
+  const currentNote = resolveNote(pressedButtons, profile.notes)
 
   const [targetIndex, setTargetIndex] = useState(0)
   const [feedback, setFeedback] = useState('Toca la nota objetivo para comenzar.')
   const [audioEnabled, setAudioEnabled] = useState(false)
+  const [breathRequired, setBreathRequired] = useState(false)
+  const [breathThreshold, setBreathThreshold] = useState(0.12)
   const audioContext = useRef<AudioContext | null>(null)
-  const target = OCARINA_NOTES[targetIndex]
+  const oscillatorRef = useRef<OscillatorNode | null>(null)
+  const gainRef = useRef<GainNode | null>(null)
+  const target = profile.notes[targetIndex]
+  const isBlowing = breath.enabled && breath.level >= breathThreshold
+  const performedNote = currentNote && (!breathRequired || isBlowing) ? currentNote : null
 
   const enableAudio = async () => {
     if (!audioContext.current) audioContext.current = new AudioContext()
     await audioContext.current.resume()
     setAudioEnabled(true)
+  }
+
+  const enableBreath = async () => {
+    await enableAudio()
+    await breath.start()
+    setBreathRequired(true)
+  }
+
+  const disableBreath = () => {
+    breath.stop()
+    setBreathRequired(false)
   }
 
   useEffect(() => {
@@ -48,40 +69,61 @@ export default function App() {
     oscillator.type = 'sine'
     oscillator.frequency.setValueAtTime(currentNote.frequency, context.currentTime)
     gain.gain.setValueAtTime(0.0001, context.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.018)
 
     oscillator.connect(gain)
     gain.connect(context.destination)
     oscillator.start()
+    oscillatorRef.current = oscillator
+    gainRef.current = gain
 
     return () => {
       gain.gain.cancelScheduledValues(context.currentTime)
-      gain.gain.setTargetAtTime(0.0001, context.currentTime, 0.025)
-      oscillator.stop(context.currentTime + 0.12)
+      gain.gain.setTargetAtTime(0.0001, context.currentTime, 0.018)
+      oscillator.stop(context.currentTime + 0.08)
+      oscillatorRef.current = null
+      gainRef.current = null
     }
   }, [audioEnabled, currentNote])
 
   useEffect(() => {
-    if (!currentNote) {
+    if (!audioEnabled || !audioContext.current || !gainRef.current || !currentNote) return
+
+    const context = audioContext.current
+    const targetGain = breathRequired
+      ? isBlowing
+        ? Math.min(0.34, 0.025 + breath.level * 0.3)
+        : 0.0001
+      : 0.18
+
+    gainRef.current.gain.setTargetAtTime(targetGain, context.currentTime, 0.022)
+  }, [audioEnabled, breath.level, breathRequired, currentNote, isBlowing])
+
+  useEffect(() => {
+    if (breathRequired && currentNote && !isBlowing) {
+      setFeedback(`${currentNote.name} lista. Ahora sopla para hacerla sonar.`)
+      return
+    }
+
+    if (!performedNote) {
       setFeedback('Esperando una nota…')
       return
     }
 
-    if (currentNote.name !== target.name) {
-      setFeedback(`Tocaste ${currentNote.name}. Busca ${target.name}.`)
+    if (performedNote.name !== target.name) {
+      setFeedback(`Tocaste ${performedNote.name}. Busca ${target.name}.`)
       return
     }
 
-    setFeedback(`✓ ${currentNote.name} correcta`)
+    setFeedback(`✓ ${performedNote.name} correcta`)
     const timer = window.setTimeout(() => {
-      setTargetIndex((index) => (index + 1) % OCARINA_NOTES.length)
+      setTargetIndex((index) => (index + 1) % profile.notes.length)
       setFeedback('Siguiente nota…')
     }, 420)
 
     return () => window.clearTimeout(timer)
-  }, [currentNote, target.name])
+  }, [breathRequired, currentNote, isBlowing, performedNote, profile.notes.length, target.name])
 
-  const holes = currentNote?.holes ?? Array(6).fill(false)
+  const holes = currentNote?.holes ?? Array(profile.holeCount).fill(false)
 
   return (
     <main className="app-shell">
@@ -89,14 +131,22 @@ export default function App() {
         <div>
           <span className="eyebrow">BLACKMAMBA INSTRUMENT LAB</span>
           <h1>OCARINA <span>3D</span></h1>
-          <p>Control físico → digitación → nota → sonido → pentagrama.</p>
+          <p>Control físico → digitación → aire → nota → sonido → pentagrama.</p>
         </div>
-        <button className={audioEnabled ? 'audio-button active' : 'audio-button'} onClick={enableAudio}>
-          {audioEnabled ? 'Audio activo' : 'Activar audio'}
-        </button>
+        <div className="hero-actions">
+          <button className={audioEnabled ? 'audio-button active' : 'audio-button'} onClick={enableAudio}>
+            {audioEnabled ? 'Audio activo' : 'Activar audio'}
+          </button>
+          <button
+            className={breathRequired ? 'audio-button breath active' : 'audio-button breath'}
+            onClick={breathRequired ? disableBreath : enableBreath}
+          >
+            {breathRequired ? 'Soplido activo' : 'Usar micrófono'}
+          </button>
+        </div>
       </header>
 
-      <Staff target={target} played={currentNote} />
+      <Staff target={target} played={performedNote} />
 
       <section className="workspace">
         <div className="scene-panel">
@@ -119,7 +169,40 @@ export default function App() {
           <div className="readout">
             <span>NOTA ACTUAL</span>
             <strong>{currentNote?.name ?? '—'}</strong>
-            <small>{currentNote ? `${currentNote.frequency.toFixed(2)} Hz` : 'Sin entrada'}</small>
+            <small>
+              {currentNote
+                ? breathRequired && !isBlowing
+                  ? 'Digitación lista · falta aire'
+                  : `${currentNote.frequency.toFixed(2)} Hz`
+                : 'Sin entrada'}
+            </small>
+          </div>
+
+          <div className="breath-panel">
+            <div className="breath-heading">
+              <div>
+                <span>AIRE</span>
+                <strong>{breathRequired ? (isBlowing ? 'Soplando' : 'En espera') : 'Opcional'}</strong>
+              </div>
+              <b>{Math.round(breath.level * 100)}%</b>
+            </div>
+            <div className="breath-meter" aria-label={`Nivel de soplido ${Math.round(breath.level * 100)}%`}>
+              <span style={{ width: `${Math.round(breath.level * 100)}%` }} />
+            </div>
+            <label className="threshold-control">
+              Umbral
+              <input
+                type="range"
+                min="0.04"
+                max="0.45"
+                step="0.01"
+                value={breathThreshold}
+                onChange={(event) => setBreathThreshold(Number(event.target.value))}
+                disabled={!breathRequired}
+              />
+              <span>{Math.round(breathThreshold * 100)}%</span>
+            </label>
+            {breath.error ? <small className="breath-error">{breath.error}</small> : null}
           </div>
 
           <div className="feedback">{feedback}</div>
@@ -128,6 +211,12 @@ export default function App() {
             {holes.map((closed, index) => (
               <span key={index} className={closed ? 'hole closed' : 'hole'} title={`Agujero ${index + 1}`} />
             ))}
+          </div>
+
+          <div className="profile-card">
+            <small>INSTRUMENT PROFILE</small>
+            <strong>{profile.name}</strong>
+            <span>{profile.holeCount} agujeros · {profile.status}</span>
           </div>
 
           <small className="device-id">{gamepad.id}</small>
@@ -142,7 +231,7 @@ export default function App() {
         </div>
 
         <div className="mapping-grid">
-          {OCARINA_NOTES.map((note) => (
+          {profile.notes.map((note) => (
             <div className={currentNote?.name === note.name ? 'mapping active' : 'mapping'} key={note.name}>
               <strong>{note.name}</strong>
               <span>{note.controlLabel}</span>
