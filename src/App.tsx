@@ -68,8 +68,8 @@ export default function App() {
 
   const enableBreath = async () => {
     await enableAudio()
-    await breath.start()
-    setBreathRequired(true)
+    const started = await breath.start()
+    setBreathRequired(started)
   }
 
   const disableBreath = () => {
