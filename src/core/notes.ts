@@ -18,8 +18,8 @@ export const OCARINA_NOTES: OcarinaNote[] = [
   { name: 'C5', frequency: 523.25, midi: 72, button: 14, controlLabel: 'D-Pad ←', holes: [false, true, false, false, false, false] },
 ]
 
-export function resolveNote(pressedButtons: number[]): OcarinaNote | null {
-  for (const note of OCARINA_NOTES) {
+export function resolveNote(pressedButtons: number[], notes: OcarinaNote[] = OCARINA_NOTES): OcarinaNote | null {
+  for (const note of notes) {
     if (pressedButtons.includes(note.button)) return note
   }
   return null
