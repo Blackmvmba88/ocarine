@@ -5,7 +5,7 @@ export type BreathInputState = {
   enabled: boolean
   level: number
   error: string | null
-  start: () => Promise<void>
+  start: () => Promise<boolean>
   stop: () => void
 }
 
@@ -42,12 +42,12 @@ export function useBreathInput(): BreathInputState {
   }, [])
 
   const start = useCallback(async () => {
-    if (enabled) return
+    if (enabled) return true
     setError(null)
 
     if (!supported) {
       setError('Este navegador no ofrece entrada de micrófono compatible.')
-      return
+      return false
     }
 
     try {
@@ -58,17 +58,18 @@ export function useBreathInput(): BreathInputState {
           noiseSuppression: false,
         },
       })
+      streamRef.current = stream
 
       const context = new AudioContext()
+      contextRef.current = context
       await context.resume()
+
       const source = context.createMediaStreamSource(stream)
       const analyser = context.createAnalyser()
       analyser.fftSize = 256
       analyser.smoothingTimeConstant = 0.72
       source.connect(analyser)
 
-      streamRef.current = stream
-      contextRef.current = context
       sourceRef.current = source
       analyserRef.current = analyser
       setEnabled(true)
@@ -89,10 +90,12 @@ export function useBreathInput(): BreathInputState {
       }
 
       sample()
+      return true
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : 'No se pudo abrir el micrófono.'
       setError(message)
       stop()
+      return false
     }
   }, [enabled, stop, supported])
 
