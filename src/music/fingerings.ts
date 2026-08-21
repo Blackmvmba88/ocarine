@@ -7,6 +7,11 @@ export interface ResolvedNote {
   label: string
 }
 
+export interface PracticeTarget {
+  note: ResolvedNote
+  holes: HoleState
+}
+
 const NOTES: Record<number, ResolvedNote> = {
   60: { name: 'C4', midi: 60, frequency: 261.63, label: 'DO' },
   62: { name: 'D4', midi: 62, frequency: 293.66, label: 'RE' },
@@ -22,6 +27,11 @@ const PROGRESSIVE_FINGERINGS: Array<{ holes: HoleState; midi: number }> = [
   { holes: [true, false, false, false], midi: 65 },
   { holes: [false, false, false, false], midi: 67 },
 ]
+
+export const PRACTICE_TARGETS: PracticeTarget[] = PROGRESSIVE_FINGERINGS.map((entry) => ({
+  note: NOTES[entry.midi],
+  holes: [...entry.holes] as HoleState,
+}))
 
 export function resolveNote(holes: HoleState): ResolvedNote {
   const exact = PROGRESSIVE_FINGERINGS.find((entry) =>
