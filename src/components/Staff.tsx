@@ -11,36 +11,60 @@ const NOTE_Y: Record<string, number> = {
   C5: 48,
 }
 
-export function Staff({ target, played }: { target: OcarinaNote; played: OcarinaNote | null }) {
-  const targetY = NOTE_Y[target.name] ?? 72
-  const playedY = played ? NOTE_Y[played.name] ?? 72 : null
+function shortControlLabel(label: string) {
+  return label.replace('D-Pad ', '')
+}
+
+export function Staff({
+  sequence,
+  activeIndex,
+  played,
+  title,
+  bpm,
+}: {
+  sequence: OcarinaNote[]
+  activeIndex: number
+  played: OcarinaNote | null
+  title: string
+  bpm: number
+}) {
+  const active = sequence[activeIndex] ?? sequence[0]
+  const usableWidth = 600
+  const startX = 70
+  const spacing = sequence.length > 1 ? usableWidth / (sequence.length - 1) : 0
+  const activeX = startX + activeIndex * spacing
 
   return (
-    <section className="staff-card">
+    <section className="staff-card sequence-mode">
       <div className="staff-copy">
-        <span className="eyebrow">PENTAGRAMA / OBJETIVO</span>
-        <strong>{target.name}</strong>
-        <span>{target.controlLabel}</span>
+        <span className="eyebrow">PENTAGRAMA / EJERCICIO</span>
+        <strong>{active?.name ?? '—'}</strong>
+        <span>{title} · {bpm} BPM · {active?.controlLabel ?? 'Sin objetivo'}</span>
+        <small>{played ? `Tú: ${played.name}` : 'Esperando ejecución…'}</small>
       </div>
 
-      <svg className="staff" viewBox="0 0 520 150" role="img" aria-label={`Toca ${target.name}`}>
+      <svg className="staff practice-staff" viewBox="0 0 740 170" role="img" aria-label={`Ejercicio ${title}`}>
         {[56, 72, 88, 104, 120].map((y) => (
-          <line key={y} x1="40" x2="490" y1={y} y2={y} className="staff-line" />
+          <line key={y} x1="34" x2="706" y1={y} y2={y} className="staff-line" />
         ))}
 
-        {target.name === 'C4' && <line x1="220" x2="280" y1="104" y2="104" className="ledger-line" />}
-        <ellipse cx="250" cy={targetY} rx="13" ry="9" className="target-note" transform={`rotate(-16 250 ${targetY})`} />
-        <line x1="262" x2="262" y1={targetY} y2={targetY - 44} className="note-stem" />
+        <line x1={activeX} x2={activeX} y1="28" y2="132" className="playhead-line" />
 
-        {playedY !== null && (
-          <>
-            <ellipse cx="380" cy={playedY} rx="11" ry="8" className="played-note" transform={`rotate(-16 380 ${playedY})`} />
-            <line x1="391" x2="391" y1={playedY} y2={playedY - 38} className="played-stem" />
-          </>
-        )}
+        {sequence.map((note, index) => {
+          const x = startX + index * spacing
+          const y = NOTE_Y[note.name] ?? 72
+          const state = index === activeIndex ? 'active' : index < activeIndex ? 'complete' : 'pending'
 
-        <text x="220" y="142" className="staff-label">OBJETIVO</text>
-        <text x="350" y="142" className="staff-label">TÚ</text>
+          return (
+            <g key={`${note.name}-${index}`} className={`sequence-note ${state}`}>
+              {note.name === 'C4' && <line x1={x - 20} x2={x + 20} y1="104" y2="104" className="ledger-line" />}
+              <ellipse cx={x} cy={y} rx="11" ry="8" transform={`rotate(-16 ${x} ${y})`} />
+              <line x1={x + 10} x2={x + 10} y1={y} y2={y - 36} className="sequence-stem" />
+              <text x={x} y="145" textAnchor="middle" className="sequence-control">{shortControlLabel(note.controlLabel)}</text>
+              <text x={x} y="160" textAnchor="middle" className="sequence-name">{note.name}</text>
+            </g>
+          )
+        })}
       </svg>
     </section>
   )
