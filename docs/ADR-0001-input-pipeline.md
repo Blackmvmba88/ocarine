@@ -61,6 +61,8 @@ Owns instrument semantics:
 
 The current `6-hole trainer` profile is explicitly marked `prototype`.
 
+`OcarinaNote` no longer carries controller button metadata. Notes contain only musical/instrument state; controller semantics live exclusively in `ControlProfile`.
+
 ### Breath input
 
 Breath is a separate continuous signal. When breath mode is enabled, a valid fingering does not become a performed note until microphone RMS crosses the configured gate threshold.
@@ -76,16 +78,15 @@ The raw microphone stream is analyzed locally and is not connected to the output
 - A future MIDI controller or custom hardware adapter can implement the same control contract.
 - Breath calibration can evolve without rewriting the gamepad layer.
 - The same instrument profile can be used by keyboard, gamepad, touch or future sensor inputs.
+- Musical note objects are now controller-agnostic.
 
 ### Tradeoffs
 
 - There are more explicit data contracts than in the original prototype.
-- Some provisional fields remain on `OcarinaNote` until the next cleanup pass removes legacy controller metadata completely.
 - Full arbitrary user remapping is not implemented yet; the current slice switches among known controller-family profiles.
 
 ## Follow-up
 
-1. Remove legacy `button` and `controlLabel` fields from `OcarinaNote` after all UI consumers use `ControlProfile` exclusively.
-2. Persist custom remappings in local storage.
-3. Add validated physical instrument profiles.
-4. Introduce a typed performance-event layer between breath gate and audio/tutor consumers.
+1. Persist custom remappings in local storage.
+2. Add validated physical instrument profiles.
+3. Introduce a typed performance-event layer between breath gate and audio/tutor consumers.
