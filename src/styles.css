@@ -17,8 +17,10 @@ button { cursor: pointer; }
 .hero h1 { margin: 8px 0 4px; font-size: clamp(42px, 7vw, 92px); line-height: .9; letter-spacing: -.055em; }
 .hero h1 span { color: #ff4f9a; }
 .hero p { margin: 14px 0 0; color: #9c9c9c; }
+.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .audio-button { border: 1px solid #393939; color: #fff; background: #111; border-radius: 999px; padding: 12px 18px; font-weight: 750; }
 .audio-button.active { border-color: #ff4f9a; box-shadow: 0 0 0 4px #ff4f9a18; }
+.audio-button.breath.active { border-color: #6be8ff; box-shadow: 0 0 0 4px #6be8ff18; }
 
 .staff-card, .mapping-card { border: 1px solid #232323; background: #0d0d0de8; backdrop-filter: blur(16px); border-radius: 24px; }
 .staff-card { display: grid; grid-template-columns: 210px 1fr; gap: 14px; align-items: center; padding: 18px 22px; }
@@ -53,6 +55,21 @@ button { cursor: pointer; }
 .hole.closed { background: #ff4f9a; border-color: #ff80b7; box-shadow: 0 0 18px #ff4f9a55; }
 .device-id { margin-top: auto; color: #606060; overflow-wrap: anywhere; }
 
+.breath-panel { border: 1px solid #252525; background: #0f1214; border-radius: 18px; padding: 14px; }
+.breath-heading { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+.breath-heading span, .profile-card small { display: block; color: #707b80; font-size: 9px; letter-spacing: .18em; }
+.breath-heading strong { display: block; margin-top: 3px; font-size: 15px; }
+.breath-heading b { color: #8feeff; font-size: 18px; }
+.breath-meter { height: 8px; margin: 12px 0; border-radius: 999px; overflow: hidden; background: #1b2225; }
+.breath-meter span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #5ed7ff, #ff4f9a); transition: width .06s linear; }
+.threshold-control { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; color: #7f898d; font-size: 11px; }
+.threshold-control input { width: 100%; accent-color: #6be8ff; }
+.threshold-control input:disabled { opacity: .35; }
+.breath-error { display: block; margin-top: 10px; color: #ff8ba3; line-height: 1.4; }
+.profile-card { border-top: 1px solid #222; padding-top: 14px; }
+.profile-card strong { display: block; margin: 5px 0 2px; }
+.profile-card span { color: #737373; font-size: 11px; }
+
 .mapping-card { margin-top: 16px; padding: 24px; display: grid; grid-template-columns: 300px 1fr; gap: 28px; }
 .mapping-card h2 { margin: 8px 0 6px; font-size: 30px; }
 .mapping-card p { color: #898989; line-height: 1.55; }
@@ -73,6 +90,7 @@ button { cursor: pointer; }
 @media (max-width: 560px) {
   .app-shell { width: min(100% - 18px, 1440px); padding-top: 8px; }
   .hero { align-items: flex-start; flex-direction: column; }
+  .hero-actions { width: 100%; justify-content: flex-start; }
   .mapping-grid { grid-template-columns: 1fr 1fr; }
   .readout strong { font-size: 52px; }
 }
