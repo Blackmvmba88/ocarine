@@ -1,17 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { OcarinaNote } from '../core/notes'
-
-export type PerformanceSource = 'gamepad' | 'keyboard' | 'mixed' | 'unknown'
-
-export type PerformanceNoteEvent = {
-  note: string
-  midi: number
-  frequency: number
-  startedAtMs: number
-  durationMs: number
-  breathPeak: number
-  source: PerformanceSource
-}
+import type { PerformanceNoteEvent, PerformanceSource } from '../core/performance'
 
 type ActiveEvent = {
   note: OcarinaNote
@@ -65,10 +54,13 @@ export function usePerformanceRecorder(
   }, [finalizeActive])
 
   const reset = useCallback(() => {
-    activeRef.current = null
-    sessionStartRef.current = recording ? performance.now() : null
+    const now = performance.now()
     setEvents([])
-  }, [recording])
+    sessionStartRef.current = recording ? now : null
+    activeRef.current = recording && performedNote
+      ? { note: performedNote, startedAt: now, breathPeak: breathLevel, source }
+      : null
+  }, [breathLevel, performedNote, recording, source])
 
   useEffect(() => {
     if (!recording) return
@@ -94,8 +86,8 @@ export function usePerformanceRecorder(
   }, [breathLevel, finalizeActive, performedNote, recording, source])
 
   useEffect(() => () => {
-    if (recording) finalizeActive(performance.now())
-  }, [finalizeActive, recording])
+    activeRef.current = null
+  }, [])
 
   return { recording, events, start, stop, reset }
 }
