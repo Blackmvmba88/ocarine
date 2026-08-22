@@ -20,10 +20,13 @@ This document records what is implemented in `feat/mvp-foundation` and what rema
 - Breath gate: when enabled, fingering alone does not count as a performed note until the player blows above the configured threshold.
 - Breath level drives output gain, giving the prototype a first dynamic-expression signal.
 - Adjustable breath threshold in the UI.
-- Guided staff exercise with a visible multi-note phrase, active playhead and control label under every target note.
+- Guided staff exercise with a visible multi-note phrase, active tutor playhead and control label under every target note.
+- Rhythmic exercise metadata: BPM, time signature, count-in metadata and per-note beat duration.
+- Beat-proportional horizontal note spacing and visible measure boundaries.
+- Independent looping visual tempo cursor driven by a real BPM clock.
 - Automatic learn loop that advances after each correct note and restarts after the phrase is completed.
 - Typed performance recording with note, MIDI, frequency, onset, duration, breath peak and input source.
-- Local versioned JSON performance export.
+- Local versioned JSON performance export including exercise, BPM and meter metadata.
 - Live connection state, note frequency, fingering state, breath level and instrument-profile telemetry.
 - Responsive UI for desktop and smaller screens.
 - GitHub Actions build validation.
@@ -33,10 +36,29 @@ This document records what is implemented in `feat/mvp-foundation` and what rema
 `First Flight` is the first data-driven practice phrase:
 
 ```text
-C4  D4  E4  G4  E4  D4  C4
+C4  D4  E4  G4    E4  D4  C4
+1b  1b  1b  2b    1b  1b  2b
 ```
 
-The staff renders the complete phrase at once. The active note is highlighted by a playhead and each note shows the currently selected gamepad control required to perform it.
+Current exercise metadata:
+
+```text
+84 BPM
+4/4
+4-beat count-in metadata
+9 total phrase beats
+```
+
+The staff renders the complete phrase at once. Notes are spaced according to their duration rather than evenly. Measure boundaries are visible.
+
+Two cursors have intentionally different meanings:
+
+```text
+PINK  = tutor target / what to play
+CYAN  = tempo clock / when the beat is happening
+```
+
+This separation lets future modes choose whether timing is advisory, scored or fully synchronized without coupling note validation to the visual clock.
 
 Exercise data lives separately from rendering so later song files can use the same pipeline.
 
@@ -101,6 +123,26 @@ The microphone signal is analyzed locally in the browser. The analyser is not co
 
 The current breath detector is deliberately simple: time-domain RMS with smoothing and a user-adjustable threshold. It proves the interaction contract before later work on calibration, attack detection and more sophisticated breath modeling.
 
+## Tempo guide
+
+The first timing engine is deliberately visual rather than an audible metronome.
+
+```text
+BPM + TOTAL BEATS
+       ↓
+requestAnimationFrame clock
+       ↓
+current fractional beat
+       ↓
+measure / beat readout
+       ↓
+cyan staff cursor
+```
+
+The clock loops over the phrase and can be started, paused or reset independently from the tutor.
+
+The current `countInBeats` field is part of the exercise contract but is reserved for the next count-in/metronome slice; it is not yet played or animated as a separate pre-roll.
+
 ## Performance recording
 
 Recording is explicit and local. The player can start, stop, clear and export a performance session.
@@ -123,7 +165,7 @@ The first export envelope is:
 blackmamba-ocarina-performance / v1
 ```
 
-The JSON payload also records the instrument profile, controller profile, breath mode and threshold used during the session. This format is intended to become the source for future replay, MIDI, MusicXML and learning analytics.
+The JSON payload also records the instrument profile, controller profile, exercise id, BPM, meter, breath mode and threshold used during the session. This format is intended to become the source for future replay, MIDI, MusicXML and learning analytics.
 
 ## Run locally
 
@@ -133,6 +175,8 @@ npm run dev
 ```
 
 Then open the local Vite URL. You can click **Activar audio** for button-only play, or **Usar micrófono** to require breath. Use either the keyboard mapping or a connected gamepad.
+
+Start **Tempo Guide** when you want the independent BPM cursor to run across the phrase.
 
 Microphone access requires a secure browser context (`localhost` or HTTPS) and explicit user permission.
 
@@ -146,17 +190,20 @@ The current audio voice is intentionally a simple oscillator. Breath already gat
 
 Performance JSON is versioned but still an internal prototype interchange format rather than a promised stable public API.
 
+The current tempo guide does not score timing yet. It is a visual clock and notation-layout foundation.
+
 ## Next slice
 
 1. Add validated physical ocarina fingering profiles.
 2. Replace the procedural body with a proper `.glb` ocarina.
 3. Add breath calibration, attack detection and sustained articulation.
 4. Replace the oscillator with a more convincing sample/physical-model hybrid voice.
-5. Expand exercise/song files with duration, rests, measures, tempo cursor and practice looping.
-6. Add session replay from recorded performance events.
-7. Add MIDI export, then quantized MusicXML export.
-8. Add import/export for custom controller profiles.
-9. Add continuous expression events for vibrato, pitch bend and motion sensors.
+5. Add audible count-in/metronome and optional timing scoring against note windows.
+6. Expand exercise/song files with rests, measures, sections and practice looping.
+7. Add session replay from recorded performance events.
+8. Add MIDI export, then quantized MusicXML export.
+9. Add import/export for custom controller profiles.
+10. Add continuous expression events for vibrato, pitch bend and motion sensors.
 
 ## MVP success condition
 
@@ -174,8 +221,10 @@ MICROPHONE ─→ BREATH ──────────────────�
                                       NOTE EVENT
                                    ↙       ↓       ↘
                               3D + AUDIO  STAFF  RECORDER
-                                             ↓
-                                        NEXT TARGET
+                                           ↑
+                                      TEMPO CLOCK
+                                           ↓
+                                      NEXT TARGET
 ```
 
 That loop is now represented in the codebase and is the first playable form of BlackMamba Ocarina 3D.
