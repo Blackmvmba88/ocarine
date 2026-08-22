@@ -17,6 +17,7 @@ import { useGamepad } from './hooks/useGamepad'
 import { useKeyboardButtons } from './hooks/useKeyboardButtons'
 import { usePerformanceRecorder, type PerformanceSource } from './hooks/usePerformanceRecorder'
 import { usePersistentControlSettings } from './hooks/usePersistentControlSettings'
+import { usePracticeClock } from './hooks/usePracticeClock'
 import './styles.css'
 
 const KEYBOARD_LABELS: Record<number, string> = {
@@ -63,6 +64,11 @@ export default function App() {
     }, []),
     [exercise.steps, profile.notes],
   )
+  const durations = useMemo(() => exercise.steps.map((step) => step.beats), [exercise.steps])
+  const totalBeats = useMemo(() => durations.reduce((sum, beats) => sum + beats, 0), [durations])
+  const practiceClock = usePracticeClock(exercise.bpm, totalBeats)
+  const tempoMeasure = Math.floor(practiceClock.beat / exercise.beatsPerMeasure) + 1
+  const tempoBeatInMeasure = Math.floor(practiceClock.beat % exercise.beatsPerMeasure) + 1
 
   const [targetIndex, setTargetIndex] = useState(0)
   const [feedback, setFeedback] = useState('Toca la nota objetivo para comenzar.')
@@ -110,6 +116,9 @@ export default function App() {
       exportedAt: new Date().toISOString(),
       instrumentProfile: profile.id,
       controlProfile: controlProfile.id,
+      exercise: exercise.id,
+      bpm: exercise.bpm,
+      meter: `${exercise.beatsPerMeasure}/${exercise.beatUnit}`,
       breathRequired,
       breathThreshold,
       events: recorder.events,
@@ -231,10 +240,14 @@ export default function App() {
 
       <Staff
         sequence={sequence}
+        durations={durations}
         activeIndex={targetIndex}
         played={performedNote}
         title={exercise.title}
         bpm={exercise.bpm}
+        beatsPerMeasure={exercise.beatsPerMeasure}
+        beatUnit={exercise.beatUnit}
+        tempoBeat={practiceClock.running ? practiceClock.beat : null}
         controlLabelFor={controlLabelFor}
       />
 
@@ -287,6 +300,22 @@ export default function App() {
                   : `${currentNote.frequency.toFixed(2)} Hz`
                 : 'Sin entrada'}
             </small>
+          </div>
+
+          <div className="tempo-panel">
+            <div className="tempo-heading">
+              <div>
+                <span>TEMPO GUIDE</span>
+                <strong>{practiceClock.running ? `M${tempoMeasure} · beat ${tempoBeatInMeasure}` : `${exercise.bpm} BPM · ${exercise.beatsPerMeasure}/${exercise.beatUnit}`}</strong>
+              </div>
+              <b>{practiceClock.running ? practiceClock.beat.toFixed(1) : '—'}</b>
+            </div>
+            <div className="tempo-actions">
+              <button onClick={practiceClock.running ? practiceClock.stop : practiceClock.start}>
+                {practiceClock.running ? 'Pausa' : 'Start'}
+              </button>
+              <button onClick={practiceClock.reset}>Reset</button>
+            </div>
           </div>
 
           <div className="breath-panel">
