@@ -11,11 +11,13 @@ import {
 } from './core/controlProfiles'
 import { FIRST_FLIGHT } from './core/exercises'
 import { DEFAULT_INSTRUMENT_PROFILE } from './core/instrumentProfiles'
+import { encodePerformanceMidi } from './core/midi'
 import type { OcarinaNote } from './core/notes'
+import type { PerformanceExportEnvelope, PerformanceSource } from './core/performance'
 import { useBreathInput } from './hooks/useBreathInput'
 import { useGamepad } from './hooks/useGamepad'
 import { useKeyboardButtons } from './hooks/useKeyboardButtons'
-import { usePerformanceRecorder, type PerformanceSource } from './hooks/usePerformanceRecorder'
+import { usePerformanceRecorder } from './hooks/usePerformanceRecorder'
 import { usePersistentControlSettings } from './hooks/usePersistentControlSettings'
 import { usePracticeClock } from './hooks/usePracticeClock'
 import './styles.css'
@@ -29,6 +31,15 @@ const KEYBOARD_LABELS: Record<number, string> = {
   13: '↓',
   14: '←',
   15: '→',
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
 }
 
 export default function App() {
@@ -107,10 +118,10 @@ export default function App() {
     setBreathRequired(false)
   }
 
-  const exportPerformance = () => {
+  const exportPerformanceJson = () => {
     if (!recorder.events.length) return
 
-    const payload = {
+    const payload: PerformanceExportEnvelope = {
       format: 'blackmamba-ocarina-performance',
       version: 1,
       exportedAt: new Date().toISOString(),
@@ -124,13 +135,26 @@ export default function App() {
       events: recorder.events,
     }
 
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `blackmamba-ocarina-${Date.now()}.json`
-    anchor.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
+      `blackmamba-ocarina-${Date.now()}.json`,
+    )
+  }
+
+  const exportPerformanceMidi = () => {
+    if (!recorder.events.length) return
+
+    const bytes = encodePerformanceMidi(
+      recorder.events,
+      exercise.bpm,
+      exercise.beatsPerMeasure,
+      exercise.beatUnit,
+    )
+    const copy = new Uint8Array(bytes)
+    downloadBlob(
+      new Blob([copy.buffer], { type: 'audio/midi' }),
+      `blackmamba-ocarina-${Date.now()}.mid`,
+    )
   }
 
   useEffect(() => {
@@ -358,7 +382,8 @@ export default function App() {
                 {recorder.recording ? 'Detener' : 'Grabar'}
               </button>
               <button onClick={recorder.reset} disabled={!recorder.events.length && !recorder.recording}>Limpiar</button>
-              <button onClick={exportPerformance} disabled={!recorder.events.length}>JSON</button>
+              <button onClick={exportPerformanceJson} disabled={!recorder.events.length}>JSON</button>
+              <button onClick={exportPerformanceMidi} disabled={!recorder.events.length}>MIDI</button>
             </div>
           </div>
 
