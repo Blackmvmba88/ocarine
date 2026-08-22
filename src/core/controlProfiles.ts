@@ -80,10 +80,21 @@ export function remapControlBinding(
   button: number,
   label = `Button ${button}`,
 ): ControlProfile {
-  const existing = profile.bindings.find((binding) => binding.note === noteName)
-  const bindings = existing
-    ? profile.bindings.map((binding) => binding.note === noteName ? { ...binding, button, label } : binding)
-    : [...profile.bindings, { note: noteName, button, label }]
+  const target = profile.bindings.find((binding) => binding.note === noteName)
+  const occupant = profile.bindings.find((binding) => binding.button === button && binding.note !== noteName)
+
+  if (!target) {
+    const withoutCollision = profile.bindings.filter((binding) => binding.button !== button)
+    return { ...profile, bindings: [...withoutCollision, { note: noteName, button, label }] }
+  }
+
+  const bindings = profile.bindings.map((binding) => {
+    if (binding.note === noteName) return { ...binding, button, label }
+    if (occupant && binding.note === occupant.note) {
+      return { ...binding, button: target.button, label: target.label }
+    }
+    return binding
+  })
 
   return { ...profile, bindings }
 }
