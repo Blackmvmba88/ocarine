@@ -9,7 +9,7 @@ export type ControlBinding = {
 export type ControlProfile = {
   id: string
   name: string
-  family: 'xbox' | 'playstation' | 'nintendo'
+  family: 'xbox' | 'playstation' | 'nintendo' | 'custom'
   bindings: ControlBinding[]
 }
 
@@ -63,6 +63,29 @@ export const DEFAULT_CONTROL_PROFILE = CONTROL_PROFILES[0]
 
 export function getBinding(profile: ControlProfile, noteName: string): ControlBinding | undefined {
   return profile.bindings.find((binding) => binding.note === noteName)
+}
+
+export function createCustomControlProfile(base: ControlProfile): ControlProfile {
+  return {
+    id: 'custom-local',
+    name: `Custom · ${base.name.replace(/^Custom · /, '')}`,
+    family: 'custom',
+    bindings: base.bindings.map((binding) => ({ ...binding })),
+  }
+}
+
+export function remapControlBinding(
+  profile: ControlProfile,
+  noteName: string,
+  button: number,
+  label = `Button ${button}`,
+): ControlProfile {
+  const existing = profile.bindings.find((binding) => binding.note === noteName)
+  const bindings = existing
+    ? profile.bindings.map((binding) => binding.note === noteName ? { ...binding, button, label } : binding)
+    : [...profile.bindings, { note: noteName, button, label }]
+
+  return { ...profile, bindings }
 }
 
 export function resolveNoteFromControlProfile(
