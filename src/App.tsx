@@ -14,10 +14,13 @@ import { DEFAULT_INSTRUMENT_PROFILE } from './core/instrumentProfiles'
 import { encodePerformanceMidi } from './core/midi'
 import type { OcarinaNote } from './core/notes'
 import type { PerformanceExportEnvelope, PerformanceSource } from './core/performance'
+import { scorePerformance } from './core/practiceScoring'
 import { useBreathInput } from './hooks/useBreathInput'
 import { useGamepad } from './hooks/useGamepad'
 import { useKeyboardButtons } from './hooks/useKeyboardButtons'
+import { useMetronome } from './hooks/useMetronome'
 import { usePerformanceRecorder } from './hooks/usePerformanceRecorder'
+import { usePerformanceReplay } from './hooks/usePerformanceReplay'
 import { usePersistentControlSettings } from './hooks/usePersistentControlSettings'
 import { usePracticeClock } from './hooks/usePracticeClock'
 import './styles.css'
@@ -78,6 +81,7 @@ export default function App() {
   const durations = useMemo(() => exercise.steps.map((step) => step.beats), [exercise.steps])
   const totalBeats = useMemo(() => durations.reduce((sum, beats) => sum + beats, 0), [durations])
   const practiceClock = usePracticeClock(exercise.bpm, totalBeats)
+  const metronome = useMetronome(exercise.bpm, exercise.beatsPerMeasure, exercise.countInBeats)
   const tempoMeasure = Math.floor(practiceClock.beat / exercise.beatsPerMeasure) + 1
   const tempoBeatInMeasure = Math.floor(practiceClock.beat % exercise.beatsPerMeasure) + 1
 
@@ -99,6 +103,11 @@ export default function App() {
         ? 'keyboard'
         : 'unknown'
   const recorder = usePerformanceRecorder(performedNote, breath.level, inputSource)
+  const replay = usePerformanceReplay(recorder.events)
+  const practiceScore = useMemo(
+    () => scorePerformance(exercise, recorder.events),
+    [exercise, recorder.events],
+  )
   const controlLabelFor = (noteName: string) => getBinding(controlProfile, noteName)?.label ?? noteName
 
   const enableAudio = async () => {
@@ -116,6 +125,22 @@ export default function App() {
   const disableBreath = () => {
     breath.stop()
     setBreathRequired(false)
+  }
+
+  const startTempoTraining = async () => {
+    replay.stop()
+    practiceClock.reset()
+    await metronome.start()
+  }
+
+  const stopTempoTraining = () => {
+    metronome.stop()
+    practiceClock.stop()
+  }
+
+  const resetTempoTraining = () => {
+    metronome.stop()
+    practiceClock.reset()
   }
 
   const exportPerformanceJson = () => {
@@ -156,6 +181,15 @@ export default function App() {
       `blackmamba-ocarina-${Date.now()}.mid`,
     )
   }
+
+  useEffect(() => {
+    if (metronome.phase === 'playing' && !practiceClock.running) {
+      practiceClock.start()
+    }
+    if (metronome.phase === 'idle' && practiceClock.running) {
+      practiceClock.stop()
+    }
+  }, [metronome.phase, practiceClock.running, practiceClock.start, practiceClock.stop])
 
   useEffect(() => {
     const previous = new Set(previousGamepadButtons.current)
@@ -240,6 +274,11 @@ export default function App() {
   }, [breathRequired, currentNote, isBlowing, performedNote, remapNote, sequence.length, target.name, targetIndex])
 
   const holes = currentNote?.holes ?? Array(profile.holeCount).fill(false)
+  const tempoStatus = metronome.phase === 'count-in'
+    ? `Count-in ${metronome.beatNumber}/${exercise.countInBeats}`
+    : practiceClock.running
+      ? `M${tempoMeasure} · beat ${tempoBeatInMeasure}`
+      : `${exercise.bpm} BPM · ${exercise.beatsPerMeasure}/${exercise.beatUnit}`
 
   return (
     <main className="app-shell">
@@ -330,15 +369,15 @@ export default function App() {
             <div className="tempo-heading">
               <div>
                 <span>TEMPO GUIDE</span>
-                <strong>{practiceClock.running ? `M${tempoMeasure} · beat ${tempoBeatInMeasure}` : `${exercise.bpm} BPM · ${exercise.beatsPerMeasure}/${exercise.beatUnit}`}</strong>
+                <strong>{tempoStatus}</strong>
               </div>
-              <b>{practiceClock.running ? practiceClock.beat.toFixed(1) : '—'}</b>
+              <b>{practiceClock.running ? practiceClock.beat.toFixed(1) : metronome.phase === 'count-in' ? metronome.beatNumber : '—'}</b>
             </div>
             <div className="tempo-actions">
-              <button onClick={practiceClock.running ? practiceClock.stop : practiceClock.start}>
-                {practiceClock.running ? 'Pausa' : 'Start'}
+              <button onClick={metronome.running ? stopTempoTraining : startTempoTraining}>
+                {metronome.running ? 'Stop' : 'Count-in + Start'}
               </button>
-              <button onClick={practiceClock.reset}>Reset</button>
+              <button onClick={resetTempoTraining}>Reset</button>
             </div>
           </div>
 
@@ -384,7 +423,18 @@ export default function App() {
               <button onClick={recorder.reset} disabled={!recorder.events.length && !recorder.recording}>Limpiar</button>
               <button onClick={exportPerformanceJson} disabled={!recorder.events.length}>JSON</button>
               <button onClick={exportPerformanceMidi} disabled={!recorder.events.length}>MIDI</button>
+              <button onClick={replay.playing ? replay.stop : replay.play} disabled={!recorder.events.length}>
+                {replay.playing ? 'Stop replay' : 'Replay'}
+              </button>
             </div>
+            {recorder.events.length ? (
+              <div className="score-grid">
+                <div><span>SCORE</span><strong>{practiceScore.score}</strong></div>
+                <div><span>NOTAS</span><strong>{practiceScore.noteAccuracy}%</strong></div>
+                <div><span>TIMING</span><strong>{practiceScore.timingAccuracy}%</strong></div>
+                <div><span>ERROR AVG</span><strong>{practiceScore.averageAbsTimingErrorMs ?? '—'}<small>{practiceScore.averageAbsTimingErrorMs === null ? '' : ' ms'}</small></strong></div>
+              </div>
+            ) : null}
           </div>
 
           <div className="feedback">{remapNote ? `Pulsa ahora el botón que quieres usar para ${remapNote}.` : feedback}</div>
