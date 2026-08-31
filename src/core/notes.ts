@@ -5,13 +5,48 @@ export type OcarinaNote = {
   holes: boolean[]
 }
 
+export const SIX_HOLE_PENDANT_HOLE_ORDER = [
+  'front-upper-left',
+  'front-upper-right',
+  'front-lower-left',
+  'front-lower-right',
+  'thumb-left',
+  'thumb-right',
+] as const
+
+function midiToFrequency(midi: number): number {
+  return 440 * 2 ** ((midi - 69) / 12)
+}
+
+function createNote(name: string, midi: number, holes: boolean[]): OcarinaNote {
+  if (holes.length !== SIX_HOLE_PENDANT_HOLE_ORDER.length) {
+    throw new Error(`Expected ${SIX_HOLE_PENDANT_HOLE_ORDER.length} holes for ${name}`)
+  }
+
+  return {
+    name,
+    midi,
+    frequency: midiToFrequency(midi),
+    holes,
+  }
+}
+
+/**
+ * Natural C-major fingerings for the standard English 6-hole pendant system.
+ * `true` means the hole is covered.
+ *
+ * The pitch octave here is the app's concert-pitch trainer reference. Physical
+ * 6-hole C pendants can sound in a different octave depending on the model;
+ * the fingering relationship remains the same and the physical profile carries
+ * that distinction explicitly.
+ */
 export const OCARINA_NOTES: OcarinaNote[] = [
-  { name: 'C4', frequency: 261.63, midi: 60, holes: [true, true, true, true, true, true] },
-  { name: 'D4', frequency: 293.66, midi: 62, holes: [true, true, true, true, true, false] },
-  { name: 'E4', frequency: 329.63, midi: 64, holes: [true, true, true, true, false, false] },
-  { name: 'F4', frequency: 349.23, midi: 65, holes: [true, true, true, false, false, false] },
-  { name: 'G4', frequency: 392.0, midi: 67, holes: [true, true, false, false, false, false] },
-  { name: 'A4', frequency: 440.0, midi: 69, holes: [true, false, false, false, false, false] },
-  { name: 'B4', frequency: 493.88, midi: 71, holes: [false, false, false, false, false, false] },
-  { name: 'C5', frequency: 523.25, midi: 72, holes: [false, true, false, false, false, false] },
+  createNote('C4', 60, [true, true, true, true, true, true]),
+  createNote('D4', 62, [true, false, true, true, true, true]),
+  createNote('E4', 64, [true, true, true, false, true, true]),
+  createNote('F4', 65, [true, false, true, false, true, true]),
+  createNote('G4', 67, [false, false, true, true, true, true]),
+  createNote('A4', 69, [false, false, true, false, true, true]),
+  createNote('B4', 71, [false, true, false, false, true, true]),
+  createNote('C5', 72, [false, false, false, false, true, true]),
 ]
