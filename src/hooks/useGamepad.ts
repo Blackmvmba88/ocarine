@@ -4,14 +4,16 @@ type GamepadState = {
   connected: boolean
   id: string
   pressedButtons: number[]
-  axes: number[]
 }
 
 const EMPTY_STATE: GamepadState = {
   connected: false,
   id: 'Sin control conectado',
   pressedButtons: [],
-  axes: [],
+}
+
+function sameButtons(left: number[], right: number[]) {
+  return left.length === right.length && left.every((button, index) => button === right[index])
 }
 
 export function useGamepad(): GamepadState {
@@ -19,24 +21,41 @@ export function useGamepad(): GamepadState {
 
   useEffect(() => {
     let frame = 0
+    let lastConnected = false
+    let lastId = EMPTY_STATE.id
+    let lastButtons: number[] = []
 
     const poll = () => {
       const gamepads = navigator.getGamepads?.() ?? []
       const gamepad = Array.from(gamepads).find(Boolean)
 
       if (!gamepad) {
-        setState((current) => (current.connected ? EMPTY_STATE : current))
+        if (lastConnected) {
+          lastConnected = false
+          lastId = EMPTY_STATE.id
+          lastButtons = []
+          setState(EMPTY_STATE)
+        }
       } else {
-        const pressedButtons = gamepad.buttons
-          .map((button, index) => (button.pressed ? index : -1))
-          .filter((index) => index >= 0)
+        const pressedButtons: number[] = []
+        for (let index = 0; index < gamepad.buttons.length; index += 1) {
+          if (gamepad.buttons[index]?.pressed) pressedButtons.push(index)
+        }
 
-        setState({
-          connected: true,
-          id: gamepad.id,
-          pressedButtons,
-          axes: [...gamepad.axes],
-        })
+        const changed = !lastConnected
+          || lastId !== gamepad.id
+          || !sameButtons(lastButtons, pressedButtons)
+
+        if (changed) {
+          lastConnected = true
+          lastId = gamepad.id
+          lastButtons = pressedButtons
+          setState({
+            connected: true,
+            id: gamepad.id,
+            pressedButtons,
+          })
+        }
       }
 
       frame = requestAnimationFrame(poll)
