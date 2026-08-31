@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 import { OcarinaScene } from './components/OcarinaScene'
 import { Staff } from './components/Staff'
 import {
@@ -9,7 +9,7 @@ import {
   remapControlBinding,
   resolveNoteFromControlProfile,
 } from './core/controlProfiles'
-import { FIRST_FLIGHT } from './core/exercises'
+import { FIRST_FLIGHT, stepsForSection, type PracticeExercise } from './core/exercises'
 import { DEFAULT_INSTRUMENT_PROFILE } from './core/instrumentProfiles'
 import { encodePerformanceMidi } from './core/midi'
 import type { OcarinaNote } from './core/notes'
@@ -52,8 +52,19 @@ export default function App() {
   const keyboardButtons = useKeyboardButtons()
   const breath = useBreathInput()
   const controlSettings = usePersistentControlSettings()
+
   const [remapNote, setRemapNote] = useState<string | null>(null)
+  const [sectionId, setSectionId] = useState(exercise.sections[0]?.id ?? 'full')
+  const [tempoPercent, setTempoPercent] = useState(100)
+  const [targetIndex, setTargetIndex] = useState(0)
+  const [feedback, setFeedback] = useState('Toca la nota objetivo para comenzar.')
+  const [audioEnabled, setAudioEnabled] = useState(false)
+  const [breathRequired, setBreathRequired] = useState(false)
+  const [breathThreshold, setBreathThreshold] = useState(0.12)
+
   const previousGamepadButtons = useRef<number[]>([])
+  const audioContext = useRef<AudioContext | null>(null)
+  const gainRef = useRef<GainNode | null>(null)
 
   const availableControlProfiles = useMemo(
     () => controlSettings.customProfile
@@ -66,32 +77,41 @@ export default function App() {
     (candidate) => candidate.id === controlSettings.selectedProfileId,
   ) ?? DEFAULT_CONTROL_PROFILE
 
+  const selectedSection = exercise.sections.find((candidate) => candidate.id === sectionId)
+    ?? exercise.sections[0]
+  const activeSteps = useMemo(() => stepsForSection(exercise, sectionId), [exercise, sectionId])
+  const practiceBpm = Math.max(30, Math.round(exercise.bpm * tempoPercent / 100))
+  const activeExercise = useMemo<PracticeExercise>(() => ({
+    ...exercise,
+    id: `${exercise.id}:${sectionId}`,
+    title: `${exercise.title} · ${selectedSection?.title ?? 'Frase completa'}`,
+    bpm: practiceBpm,
+    steps: activeSteps,
+  }), [activeSteps, exercise, practiceBpm, sectionId, selectedSection?.title])
+
   const gamepadNote = resolveNoteFromControlProfile(gamepad.pressedButtons, profile.notes, controlProfile)
   const keyboardNote = resolveNoteFromControlProfile(keyboardButtons, profile.notes, DEFAULT_CONTROL_PROFILE)
   const currentNote = gamepadNote ?? keyboardNote
 
   const sequence = useMemo(
-    () => exercise.steps.reduce<OcarinaNote[]>((notes, step) => {
+    () => activeExercise.steps.reduce<OcarinaNote[]>((notes, step) => {
       const note = profile.notes.find((candidate) => candidate.name === step.note)
       if (note) notes.push(note)
       return notes
     }, []),
-    [exercise.steps, profile.notes],
+    [activeExercise.steps, profile.notes],
   )
-  const durations = useMemo(() => exercise.steps.map((step) => step.beats), [exercise.steps])
+  const durations = useMemo(() => activeExercise.steps.map((step) => step.beats), [activeExercise.steps])
   const totalBeats = useMemo(() => durations.reduce((sum, beats) => sum + beats, 0), [durations])
-  const practiceClock = usePracticeClock(exercise.bpm, totalBeats)
-  const metronome = useMetronome(exercise.bpm, exercise.beatsPerMeasure, exercise.countInBeats)
-  const tempoMeasure = Math.floor(practiceClock.beat / exercise.beatsPerMeasure) + 1
-  const tempoBeatInMeasure = Math.floor(practiceClock.beat % exercise.beatsPerMeasure) + 1
+  const practiceClock = usePracticeClock(activeExercise.bpm, totalBeats)
+  const metronome = useMetronome(
+    activeExercise.bpm,
+    activeExercise.beatsPerMeasure,
+    activeExercise.countInBeats,
+  )
+  const tempoMeasure = Math.floor(practiceClock.beat / activeExercise.beatsPerMeasure) + 1
+  const tempoBeatInMeasure = Math.floor(practiceClock.beat % activeExercise.beatsPerMeasure) + 1
 
-  const [targetIndex, setTargetIndex] = useState(0)
-  const [feedback, setFeedback] = useState('Toca la nota objetivo para comenzar.')
-  const [audioEnabled, setAudioEnabled] = useState(false)
-  const [breathRequired, setBreathRequired] = useState(false)
-  const [breathThreshold, setBreathThreshold] = useState(0.12)
-  const audioContext = useRef<AudioContext | null>(null)
-  const gainRef = useRef<GainNode | null>(null)
   const target = sequence[targetIndex] ?? profile.notes[0]
   const isBlowing = breath.enabled && breath.level >= breathThreshold
   const performedNote = currentNote && (!breathRequired || isBlowing) ? currentNote : null
@@ -102,11 +122,12 @@ export default function App() {
       : keyboardNote
         ? 'keyboard'
         : 'unknown'
+
   const recorder = usePerformanceRecorder(performedNote, breath.level, inputSource)
   const replay = usePerformanceReplay(recorder.events)
   const practiceScore = useMemo(
-    () => scorePerformance(exercise, recorder.events),
-    [exercise, recorder.events],
+    () => scorePerformance(activeExercise, recorder.events),
+    [activeExercise, recorder.events],
   )
   const controlLabelFor = (noteName: string) => getBinding(controlProfile, noteName)?.label ?? noteName
 
@@ -143,6 +164,27 @@ export default function App() {
     practiceClock.reset()
   }
 
+  const resetPracticeContext = (message: string) => {
+    metronome.stop()
+    practiceClock.reset()
+    replay.stop()
+    recorder.reset()
+    setTargetIndex(0)
+    setFeedback(message)
+  }
+
+  const changeSection = (nextSectionId: string) => {
+    setSectionId(nextSectionId)
+    const nextSection = exercise.sections.find((candidate) => candidate.id === nextSectionId)
+    resetPracticeContext(`Loop listo: ${nextSection?.title ?? 'Frase completa'}.`)
+  }
+
+  const changeTempo = (nextPercent: number) => {
+    setTempoPercent(nextPercent)
+    const nextBpm = Math.max(30, Math.round(exercise.bpm * nextPercent / 100))
+    resetPracticeContext(`Tempo ajustado a ${nextBpm} BPM. Desde el principio…`)
+  }
+
   const exportPerformanceJson = () => {
     if (!recorder.events.length) return
 
@@ -152,9 +194,9 @@ export default function App() {
       exportedAt: new Date().toISOString(),
       instrumentProfile: profile.id,
       controlProfile: controlProfile.id,
-      exercise: exercise.id,
-      bpm: exercise.bpm,
-      meter: `${exercise.beatsPerMeasure}/${exercise.beatUnit}`,
+      exercise: activeExercise.id,
+      bpm: activeExercise.bpm,
+      meter: `${activeExercise.beatsPerMeasure}/${activeExercise.beatUnit}`,
       breathRequired,
       breathThreshold,
       events: recorder.events,
@@ -162,7 +204,7 @@ export default function App() {
 
     downloadBlob(
       new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
-      `blackmamba-ocarina-${Date.now()}.json`,
+      `blackmamba-ocarina-${sectionId}-${activeExercise.bpm}bpm-${Date.now()}.json`,
     )
   }
 
@@ -171,14 +213,14 @@ export default function App() {
 
     const bytes = encodePerformanceMidi(
       recorder.events,
-      exercise.bpm,
-      exercise.beatsPerMeasure,
-      exercise.beatUnit,
+      activeExercise.bpm,
+      activeExercise.beatsPerMeasure,
+      activeExercise.beatUnit,
     )
     const copy = new Uint8Array(bytes)
     downloadBlob(
       new Blob([copy.buffer], { type: 'audio/midi' }),
-      `blackmamba-ocarina-${Date.now()}.mid`,
+      `blackmamba-ocarina-${sectionId}-${activeExercise.bpm}bpm-${Date.now()}.mid`,
     )
   }
 
@@ -263,22 +305,22 @@ export default function App() {
       return
     }
 
-    const phraseComplete = targetIndex === sequence.length - 1
-    setFeedback(phraseComplete ? `✓ ${performedNote.name} · frase completa` : `✓ ${performedNote.name} correcta`)
+    const sectionComplete = targetIndex === sequence.length - 1
+    setFeedback(sectionComplete ? `✓ ${performedNote.name} · loop completo` : `✓ ${performedNote.name} correcta`)
     const timer = window.setTimeout(() => {
-      setTargetIndex((index) => (phraseComplete ? 0 : index + 1))
-      setFeedback(phraseComplete ? 'Otra vuelta. Desde el principio…' : 'Siguiente nota…')
-    }, phraseComplete ? 760 : 420)
+      setTargetIndex((index) => (sectionComplete ? 0 : index + 1))
+      setFeedback(sectionComplete ? 'Otra vuelta del loop…' : 'Siguiente nota…')
+    }, sectionComplete ? 620 : 420)
 
     return () => window.clearTimeout(timer)
   }, [breathRequired, currentNote, isBlowing, performedNote, remapNote, sequence.length, target.name, targetIndex])
 
   const holes = currentNote?.holes ?? Array(profile.holeCount).fill(false)
   const tempoStatus = metronome.phase === 'count-in'
-    ? `Count-in ${metronome.beatNumber}/${exercise.countInBeats}`
+    ? `Count-in ${metronome.beatNumber}/${activeExercise.countInBeats}`
     : practiceClock.running
       ? `M${tempoMeasure} · beat ${tempoBeatInMeasure}`
-      : `${exercise.bpm} BPM · ${exercise.beatsPerMeasure}/${exercise.beatUnit}`
+      : `${activeExercise.bpm} BPM · ${activeExercise.beatsPerMeasure}/${activeExercise.beatUnit}`
 
   return (
     <main className="app-shell">
@@ -306,10 +348,10 @@ export default function App() {
         durations={durations}
         activeIndex={targetIndex}
         played={performedNote}
-        title={exercise.title}
-        bpm={exercise.bpm}
-        beatsPerMeasure={exercise.beatsPerMeasure}
-        beatUnit={exercise.beatUnit}
+        title={activeExercise.title}
+        bpm={activeExercise.bpm}
+        beatsPerMeasure={activeExercise.beatsPerMeasure}
+        beatUnit={activeExercise.beatUnit}
         tempoBeat={practiceClock.running ? practiceClock.beat : null}
         controlLabelFor={controlLabelFor}
       />
@@ -368,14 +410,38 @@ export default function App() {
           <div className="tempo-panel">
             <div className="tempo-heading">
               <div>
-                <span>TEMPO GUIDE</span>
+                <span>TEMPO / LOOP</span>
                 <strong>{tempoStatus}</strong>
               </div>
-              <b>{practiceClock.running ? practiceClock.beat.toFixed(1) : metronome.phase === 'count-in' ? metronome.beatNumber : '—'}</b>
+              <b>{activeExercise.bpm}</b>
             </div>
+
+            <div className="practice-settings">
+              <label>
+                <span>SECCIÓN</span>
+                <select value={sectionId} onChange={(event) => changeSection(event.target.value)}>
+                  {exercise.sections.map((section) => (
+                    <option key={section.id} value={section.id}>{section.title}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>VELOCIDAD <b>{tempoPercent}%</b></span>
+                <input
+                  type="range"
+                  min="50"
+                  max="125"
+                  step="5"
+                  value={tempoPercent}
+                  onChange={(event) => changeTempo(Number(event.target.value))}
+                />
+              </label>
+            </div>
+
             <div className="tempo-actions">
               <button onClick={metronome.running ? stopTempoTraining : startTempoTraining}>
-                {metronome.running ? 'Stop' : 'Count-in + Start'}
+                {metronome.running ? 'Stop' : 'Count-in + Loop'}
               </button>
               <button onClick={resetTempoTraining}>Reset</button>
             </div>
@@ -432,7 +498,9 @@ export default function App() {
                 <div><span>SCORE</span><strong>{practiceScore.score}</strong></div>
                 <div><span>NOTAS</span><strong>{practiceScore.noteAccuracy}%</strong></div>
                 <div><span>TIMING</span><strong>{practiceScore.timingAccuracy}%</strong></div>
-                <div><span>ERROR AVG</span><strong>{practiceScore.averageAbsTimingErrorMs ?? '—'}<small>{practiceScore.averageAbsTimingErrorMs === null ? '' : ' ms'}</small></strong></div>
+                <div><span>DURACIÓN</span><strong>{practiceScore.durationAccuracy}%</strong></div>
+                <div><span>ERROR INICIO</span><strong>{practiceScore.averageAbsTimingErrorMs ?? '—'}<small>{practiceScore.averageAbsTimingErrorMs === null ? '' : ' ms'}</small></strong></div>
+                <div><span>ERROR DUR.</span><strong>{practiceScore.averageAbsDurationErrorMs ?? '—'}<small>{practiceScore.averageAbsDurationErrorMs === null ? '' : ' ms'}</small></strong></div>
               </div>
             ) : null}
           </div>
