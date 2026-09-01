@@ -1,0 +1,97 @@
+{
+  "revision": "BM-OC-002",
+  "model": "multi-aperture Helmholtz conductance, first order",
+  "cavity_volume_cc": 77.8935,
+  "closed_note": {
+    "name": "C5",
+    "frequency_hz": 523.251
+  },
+  "predicted_closed_hz": 523.251,
+  "holes": [
+    {
+      "id": "H1",
+      "note": "D5",
+      "frequency_hz": 587.33,
+      "center": [
+        74.9189,
+        9.7297,
+        19.4595
+      ],
+      "target_diameter_mm": 3.856,
+      "pilot_diameter_mm": 3.456,
+      "first_order_prediction_hz": 587.33,
+      "first_order_error_cents": -0.0
+    },
+    {
+      "id": "H2",
+      "note": "E5",
+      "frequency_hz": 659.255,
+      "center": [
+        90.4865,
+        -1.9459,
+        21.7946
+      ],
+      "target_diameter_mm": 4.518,
+      "pilot_diameter_mm": 4.118,
+      "first_order_prediction_hz": 659.255,
+      "first_order_error_cents": -0.0
+    },
+    {
+      "id": "H3",
+      "note": "F5",
+      "frequency_hz": 698.456,
+      "center": [
+        108.0,
+        7.7838,
+        22.573
+      ],
+      "target_diameter_mm": 3.178,
+      "pilot_diameter_mm": 2.778,
+      "first_order_prediction_hz": 698.456,
+      "first_order_error_cents": -0.0
+    },
+    {
+      "id": "H4",
+      "note": "G5",
+      "frequency_hz": 783.991,
+      "center": [
+        125.5135,
+        -3.8919,
+        21.7946
+      ],
+      "target_diameter_mm": 5.778,
+      "pilot_diameter_mm": 5.378,
+      "first_order_prediction_hz": 783.991,
+      "first_order_error_cents": -0.0
+    },
+    {
+      "id": "H5",
+      "note": "A5",
+      "frequency_hz": 880.0,
+      "center": [
+        141.0811,
+        7.7838,
+        19.4595
+      ],
+      "target_diameter_mm": 6.848,
+      "pilot_diameter_mm": 6.448,
+      "first_order_prediction_hz": 880.0,
+      "first_order_error_cents": -0.0
+    },
+    {
+      "id": "H6",
+      "note": "B5",
+      "frequency_hz": 987.767,
+      "center": [
+        152.7568,
+        -3.8919,
+        17.1243
+      ],
+      "target_diameter_mm": 8.157,
+      "pilot_diameter_mm": 7.757,
+      "first_order_prediction_hz": 987.767,
+      "first_order_error_cents": -0.0
+    }
+  ],
+  "warning": "Pilot dimensions are intentionally undersize. Tune a physical prototype by measurement; do not treat these values as concert-certified."
+}

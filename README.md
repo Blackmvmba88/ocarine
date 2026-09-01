@@ -588,6 +588,36 @@ El mismo archivo podrá alimentar:
 
 ---
 
+# 🛠️ Prototipo físico BM-OC-002
+
+El repositorio incluye un pase de ingeniería para convertir la geometría visual
+en una ocarina hueca y calibrable:
+
+- cámara acústica de referencia de 77.8935 cm³;
+- windway interno inclinado;
+- ventana de voz y labium editable;
+- seis agujeros piloto calculados para C5–B5;
+- generador automático de `.blend` y `.glb`;
+- validación de manifold y dimensiones;
+- render automático de corte transversal.
+
+El código y las instrucciones están en:
+
+[`hardware/ocarina-acoustic-v2`](hardware/ocarina-acoustic-v2)
+
+En macOS, con Blender instalado, se puede generar todo el pase con:
+
+```bash
+cd hardware/ocarina-acoustic-v2
+chmod +x apply_ocarina_acoustic_v2.command
+./apply_ocarina_acoustic_v2.command
+```
+
+> BM-OC-002 es un prototipo de calibración. Los agujeros se generan menores que
+> su diámetro teórico para afinarlos progresivamente sobre una impresión real.
+
+---
+
 # 🧪 MVP
 
 El primer MVP necesita demostrar solamente este circuito:
