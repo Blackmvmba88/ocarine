@@ -1,0 +1,28 @@
+{
+  "project": "BlackMamba Ocarina",
+  "checkpoint": "ACOUSTIC_MANUFACTURING_V2",
+  "status": "ready_for_blender_generation_cutaway_validation_and_physical_calibration",
+  "completed": [
+    "diagnosed V1 as visual-only geometry",
+    "defined hollow 77.8935 cc calibration chamber",
+    "defined sloped 1.4 x 9.5 mm windway",
+    "defined 14 x 8 mm voice window",
+    "added editable labium blade",
+    "converted six visual wells to through-hole pilots",
+    "added first-order C5-B5 Helmholtz sizing",
+    "added undersize drilling allowance",
+    "added one-click Mac generator",
+    "added automated manifold and dimension validation",
+    "added non-destructive cross-section blend",
+    "added 1600 x 1000 cutaway inspection render"
+  ],
+  "next": [
+    "run Blender boolean generation",
+    "inspect automated cutaway and geometry report",
+    "inspect minimum wall map",
+    "print calibration shell",
+    "measure closed note and jet stability",
+    "tune H1-H6 sequentially",
+    "freeze measured dimensions into BM-OC-003"
+  ]
+}
