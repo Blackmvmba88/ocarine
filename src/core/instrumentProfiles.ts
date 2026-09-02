@@ -1,5 +1,7 @@
 import {
-  OCARINA_NOTES,
+  BM_OC_002_HOLE_ORDER,
+  BM_OC_002_NOTES,
+  ENGLISH_PENDANT_C_SIX_HOLE_NOTES,
   SIX_HOLE_PENDANT_HOLE_ORDER,
   type OcarinaNote,
 } from './notes'
@@ -35,7 +37,7 @@ export const ENGLISH_PENDANT_C_SIX_HOLE_PROFILE: InstrumentProfile = {
   fingeringSystem: 'english-pendant',
   key: 'C major',
   status: 'reference',
-  notes: OCARINA_NOTES,
+  notes: ENGLISH_PENDANT_C_SIX_HOLE_NOTES,
   references: [
     {
       label: 'STL Ocarina · Complete Fingering Chart for 6 Hole Ocarina in C Major',
@@ -50,5 +52,23 @@ export const ENGLISH_PENDANT_C_SIX_HOLE_PROFILE: InstrumentProfile = {
   ],
 }
 
-export const TRAINER_SIX_HOLE_PROFILE = ENGLISH_PENDANT_C_SIX_HOLE_PROFILE
-export const DEFAULT_INSTRUMENT_PROFILE = ENGLISH_PENDANT_C_SIX_HOLE_PROFILE
+export const BM_OC_002_PROFILE: InstrumentProfile = {
+  id: 'bm-oc-002-acoustic-v2',
+  name: 'BM-OC-002 · Acoustic V2',
+  description: 'Gemelo digital del prototipo físico BM-OC-002: C5 cerrado y apertura acumulativa H1–H6 para D5–B5. Los diámetros acústicos siguen siendo de calibración hasta medir una impresión real.',
+  holeCount: BM_OC_002_HOLE_ORDER.length,
+  holeOrder: BM_OC_002_HOLE_ORDER,
+  fingeringSystem: 'progressive-opening-acoustic-v2',
+  key: 'C major · C5–B5',
+  status: 'prototype',
+  notes: BM_OC_002_NOTES,
+  references: [],
+  validationNotes: [
+    'Source geometry and acoustic targets live in hardware/ocarina-acoustic-v2/acoustic_design_v2.json.',
+    'The Helmholtz model is first-order; the physical print must be tuned with measured Hz/cents under controlled breath pressure.',
+    'Promote this profile to validated only after hole diameters, pressure and repeatability are recorded on the manufactured instrument.',
+  ],
+}
+
+export const TRAINER_SIX_HOLE_PROFILE = BM_OC_002_PROFILE
+export const DEFAULT_INSTRUMENT_PROFILE = BM_OC_002_PROFILE
