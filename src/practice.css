@@ -1,0 +1,139 @@
+.measure-line {
+  stroke: #2f2f2f;
+  stroke-width: 1.2;
+}
+
+.measure-label {
+  fill: #555;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.tempo-cursor-line {
+  stroke: #6be8ff;
+  stroke-width: 2;
+  opacity: .9;
+  filter: drop-shadow(0 0 5px #6be8ff88);
+}
+
+.duration-rail {
+  stroke: #292929;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.sequence-note.active .duration-rail {
+  stroke: #ff4f9a66;
+}
+
+.sequence-note.complete .duration-rail {
+  stroke: #555;
+}
+
+.tempo-panel {
+  border: 1px solid #253137;
+  background: #0d1316;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.tempo-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.tempo-heading span {
+  display: block;
+  color: #6f7e84;
+  font-size: 9px;
+  letter-spacing: .18em;
+}
+
+.tempo-heading strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 15px;
+}
+
+.tempo-heading > b {
+  min-width: 58px;
+  color: #8feeff;
+  font-size: 24px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.practice-settings {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #213037;
+}
+
+.practice-settings label {
+  display: grid;
+  gap: 7px;
+}
+
+.practice-settings label > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #718087;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.practice-settings label > span b {
+  color: #8feeff;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.practice-settings select {
+  width: 100%;
+  border: 1px solid #2e444d;
+  border-radius: 10px;
+  background: #121d21;
+  color: #d8f8ff;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.practice-settings input[type='range'] {
+  width: 100%;
+  accent-color: #6be8ff;
+}
+
+.tempo-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.tempo-actions button {
+  border: 1px solid #2e444d;
+  border-radius: 10px;
+  padding: 8px;
+  color: #a9edf8;
+  background: #121d21;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tempo-actions button:hover {
+  border-color: #6be8ff;
+  color: #fff;
+}
+
+.recorder-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}

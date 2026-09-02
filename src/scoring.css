@@ -1,0 +1,55 @@
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.score-grid > div {
+  padding: 10px 11px;
+  border: 1px solid #252525;
+  border-radius: 12px;
+  background: #0d0d0d;
+}
+
+.score-grid span {
+  display: block;
+  color: #6f6f6f;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+
+.score-grid strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-grid strong small {
+  color: #777;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.recorder-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.recorder-actions button:last-child {
+  border-color: #3c2943;
+  color: #f2b1d0;
+  background: #1b1118;
+}
+
+.recorder-actions button:last-child:hover:not(:disabled) {
+  border-color: #ff4f9a;
+  color: #fff;
+}
+
+@media (max-width: 560px) {
+  .score-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
