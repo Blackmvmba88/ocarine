@@ -14,46 +14,45 @@ export type ControlProfile = {
 }
 
 const directionalBindings: ControlBinding[] = [
-  { note: 'G4', button: 12, label: 'D-Pad ↑' },
-  { note: 'A4', button: 15, label: 'D-Pad →' },
-  { note: 'B4', button: 13, label: 'D-Pad ↓' },
-  { note: 'C5', button: 14, label: 'D-Pad ←' },
+  { note: 'G5', button: 12, label: 'D-Pad ↑' },
+  { note: 'A5', button: 15, label: 'D-Pad →' },
+  { note: 'B5', button: 13, label: 'D-Pad ↓' },
 ]
 
 export const CONTROL_PROFILES: ControlProfile[] = [
   {
     id: 'xbox-standard',
-    name: 'Xbox / Standard',
+    name: 'Xbox / Standard · BM-OC-002',
     family: 'xbox',
     bindings: [
-      { note: 'C4', button: 0, label: 'A' },
-      { note: 'D4', button: 1, label: 'B' },
-      { note: 'E4', button: 2, label: 'X' },
-      { note: 'F4', button: 3, label: 'Y' },
+      { note: 'C5', button: 0, label: 'A' },
+      { note: 'D5', button: 1, label: 'B' },
+      { note: 'E5', button: 2, label: 'X' },
+      { note: 'F5', button: 3, label: 'Y' },
       ...directionalBindings,
     ],
   },
   {
     id: 'playstation-standard',
-    name: 'PlayStation',
+    name: 'PlayStation · BM-OC-002',
     family: 'playstation',
     bindings: [
-      { note: 'C4', button: 0, label: '×' },
-      { note: 'D4', button: 1, label: '○' },
-      { note: 'E4', button: 2, label: '□' },
-      { note: 'F4', button: 3, label: '△' },
+      { note: 'C5', button: 0, label: '×' },
+      { note: 'D5', button: 1, label: '○' },
+      { note: 'E5', button: 2, label: '□' },
+      { note: 'F5', button: 3, label: '△' },
       ...directionalBindings,
     ],
   },
   {
     id: 'nintendo-standard',
-    name: 'Nintendo',
+    name: 'Nintendo · BM-OC-002',
     family: 'nintendo',
     bindings: [
-      { note: 'C4', button: 0, label: 'B' },
-      { note: 'D4', button: 1, label: 'A' },
-      { note: 'E4', button: 2, label: 'Y' },
-      { note: 'F4', button: 3, label: 'X' },
+      { note: 'C5', button: 0, label: 'B' },
+      { note: 'D5', button: 1, label: 'A' },
+      { note: 'E5', button: 2, label: 'Y' },
+      { note: 'F5', button: 3, label: 'X' },
       ...directionalBindings,
     ],
   },

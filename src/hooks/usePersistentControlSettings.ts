@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ControlProfile } from '../core/controlProfiles'
 
-const STORAGE_KEY = 'blackmamba.ocarina.control-settings.v1'
+// v2 intentionally invalidates note-level remaps created against the old C4-C5
+// reference trainer. BM-OC-002 uses the physical C5-B5 digital-twin contract.
+const STORAGE_KEY = 'blackmamba.ocarina.control-settings.v2'
 
 type StoredControlSettings = {
   selectedProfileId: string
