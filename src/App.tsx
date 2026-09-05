@@ -27,7 +27,15 @@ export default function App() {
     [keyboardHoles, gamepad.holes],
   )
 
-  const breath = Math.max(keyboardBreath, gamepad.breath, microphone.level)
+  const microphoneBreath = microphone.isBlowing ? microphone.level : 0
+  const breath = Math.max(keyboardBreath, gamepad.breath, microphoneBreath)
+  const breathSource = useMemo(() => {
+    if (breath <= 0) return 'Idle'
+    if (microphoneBreath >= gamepad.breath && microphoneBreath >= keyboardBreath) return 'Microphone'
+    if (gamepad.breath >= keyboardBreath) return 'Gamepad R2'
+    return 'Keyboard / Touch'
+  }, [breath, gamepad.breath, keyboardBreath, microphoneBreath])
+
   const note = useMemo(() => resolveNote(holes), [holes])
   const target = PRACTICE_TARGETS[targetIndex]
   const { enabled: audioEnabled, enableAudio } = useOcarinaAudio(note.frequency, breath)
@@ -151,8 +159,21 @@ export default function App() {
 
           <div className="telemetry-list">
             <span>Fingering <b>{holesToText(holes)}</b></span>
+            <span>Breath source <b>{breathSource}</b></span>
             <span>Gamepad <b>{gamepad.connected ? 'Connected' : 'Offline'}</b></span>
-            <span>Microphone <b>{microphone.enabled ? `${Math.round(microphone.level * 100)}%` : 'Off'}</b></span>
+            <span>
+              Microphone
+              <b>
+                {!microphone.enabled
+                  ? 'Off'
+                  : !microphone.calibrated
+                    ? 'Calibrating'
+                    : microphone.isBlowing
+                      ? `Blowing ${Math.round(microphone.level * 100)}%`
+                      : 'Ready'}
+              </b>
+            </span>
+            <span>Breath gate <b>{microphone.isBlowing ? 'OPEN' : 'CLOSED'}</b></span>
           </div>
 
           <div className="engine-actions">
@@ -167,11 +188,20 @@ export default function App() {
               {!microphone.supported
                 ? 'MIC NOT AVAILABLE'
                 : microphone.enabled
-                  ? 'MIC BREATH ARMED'
+                  ? microphone.calibrated
+                    ? 'MIC BREATH ARMED'
+                    : 'CALIBRATING ROOM NOISE…'
                   : 'ARM MICROPHONE BREATH'}
             </button>
           </div>
 
+          {microphone.enabled && (
+            <p className="mic-status">
+              {microphone.calibrated
+                ? `Adaptive noise floor ${microphone.noiseFloor.toFixed(4)} · blow across the phone microphone.`
+                : 'Keep the phone still and quiet for a moment while the room noise is learned.'}
+            </p>
+          )}
           {microphone.error && <p className="mic-error">{microphone.error}</p>}
         </aside>
       </section>
@@ -213,7 +243,7 @@ export default function App() {
         </div>
 
         <p className="hint">
-          Gamepad: A/B/X/Y close the four holes, R2 controls breath. Keyboard: 1/2/3/4 + Space. Microphone breath can replace R2/Space after permission is granted.
+          Gamepad: A/B/X/Y close the four holes, R2 controls breath. Keyboard: 1/2/3/4 + Space. On a phone, arm the microphone, wait for calibration, then blow across the mic while holding the fingering.
         </p>
       </section>
     </main>
