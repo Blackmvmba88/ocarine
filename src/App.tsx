@@ -1,6 +1,19 @@
 import { Canvas } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { holeMaskLabel, resolveNote, type MusicalNote } from './music'
+import {
+  MATERIAL_PRESETS,
+  THEORY_LEVELS,
+  type MaterialPreset,
+  type OcarinaMaterial,
+  type TheoryLevel,
+} from './instrument'
+import {
+  holeMaskLabel,
+  notePrimaryLabel,
+  noteSecondaryLabel,
+  resolveNote,
+  type MusicalNote,
+} from './music'
 
 const HOLE_POSITIONS: [number, number, number][] = [
   [-0.72, 0.34, 0.78],
@@ -9,7 +22,17 @@ const HOLE_POSITIONS: [number, number, number][] = [
   [0.76, 0.3, 0.76],
 ]
 
-function OcarinaScene({ holes }: { holes: boolean[] }) {
+function OcarinaScene({
+  holes,
+  breath,
+  material,
+}: {
+  holes: boolean[]
+  breath: number
+  material: MaterialPreset
+}) {
+  const airflowOpacity = 0.08 + breath * 0.5
+
   return (
     <Canvas camera={{ position: [0, 0.4, 6], fov: 42 }}>
       <ambientLight intensity={1.6} />
@@ -18,12 +41,35 @@ function OcarinaScene({ holes }: { holes: boolean[] }) {
       <group rotation={[-0.18, -0.18, 0.04]}>
         <mesh scale={[2.2, 1.25, 0.72]}>
           <sphereGeometry args={[1, 64, 32]} />
-          <meshStandardMaterial color="#087bd9" metalness={0.35} roughness={0.22} />
+          <meshStandardMaterial
+            color={material.bodyColor}
+            metalness={material.metalness}
+            roughness={material.roughness}
+          />
         </mesh>
         <mesh position={[2.2, 0.08, 0]} rotation={[0, 0, -Math.PI / 2]} scale={[0.55, 0.55, 1.4]}>
           <coneGeometry args={[0.55, 1.8, 32]} />
-          <meshStandardMaterial color="#0a65b7" metalness={0.3} roughness={0.25} />
+          <meshStandardMaterial
+            color={material.mouthColor}
+            metalness={material.metalness}
+            roughness={material.roughness}
+          />
         </mesh>
+
+        {breath > 0.015 && (
+          <mesh position={[1.55, 0.08, 0]} rotation={[0, 0, Math.PI / 2]} scale={[1, 1, 0.7 + breath * 0.5]}>
+            <cylinderGeometry args={[0.08, 0.22, 2.4, 20]} />
+            <meshStandardMaterial
+              color="#70ffb0"
+              emissive="#20ff7a"
+              emissiveIntensity={1.5 + breath * 4}
+              transparent
+              opacity={airflowOpacity}
+              roughness={0.1}
+            />
+          </mesh>
+        )}
+
         {HOLE_POSITIONS.map((position, index) => (
           <mesh key={index} position={position} scale={holes[index] ? 0.82 : 1}>
             <sphereGeometry args={[0.24, 32, 16]} />
@@ -115,7 +161,7 @@ function useMicrophoneBreath() {
   return { breath, status, start, stop: () => stopRef.current() }
 }
 
-function useOcarinaAudio(note: MusicalNote | null, breath: number) {
+function useOcarinaAudio(note: MusicalNote | null, breath: number, material: MaterialPreset) {
   const contextRef = useRef<AudioContext | null>(null)
   const oscRef = useRef<OscillatorNode | null>(null)
   const gainRef = useRef<GainNode | null>(null)
@@ -153,7 +199,6 @@ function useOcarinaAudio(note: MusicalNote | null, breath: number) {
       const osc = context.createOscillator()
       const gain = context.createGain()
       const filter = context.createBiquadFilter()
-      osc.type = 'sine'
       filter.type = 'bandpass'
       filter.Q.value = 1.8
       gain.gain.value = 0.0001
@@ -170,10 +215,11 @@ function useOcarinaAudio(note: MusicalNote | null, breath: number) {
     const osc = oscRef.current!
     const gain = gainRef.current!
     const filter = filterRef.current!
+    osc.type = material.oscillator
     osc.frequency.setTargetAtTime(note!.frequency, now, 0.015)
-    filter.frequency.setTargetAtTime(note!.frequency * 2.35, now, 0.03)
-    gain.gain.setTargetAtTime(0.025 + breath * 0.16, now, 0.025)
-  }, [note, breath, ready])
+    filter.frequency.setTargetAtTime(note!.frequency * material.filterMultiplier, now, 0.03)
+    gain.gain.setTargetAtTime((0.025 + breath * 0.16) * material.gainMultiplier, now, 0.025)
+  }, [note, breath, ready, material])
 
   useEffect(() => () => {
     try { oscRef.current?.stop() } catch { /* already stopped */ }
@@ -183,12 +229,33 @@ function useOcarinaAudio(note: MusicalNote | null, breath: number) {
   return { ready, enable }
 }
 
-function Staff({ note }: { note: MusicalNote | null }) {
+function Staff({ note, level }: { note: MusicalNote | null; level: TheoryLevel }) {
   const bottom = note ? 18 + note.staffStep * 7 : 18
+  const simplified = level === 'play'
+
   return (
-    <div className="staff" aria-label={note ? `Nota ${note.name}` : 'Sin nota'}>
-      {[0, 1, 2, 3, 4].map((line) => <span className="staff-line" key={line} style={{ bottom: `${18 + line * 14}%` }} />)}
-      {note && <span className="staff-note" style={{ bottom: `${bottom}%` }} />}
+    <div className={`staff ${simplified ? 'staff-simplified' : ''}`} aria-label={note ? `Nota ${note.name}` : 'Sin nota'}>
+      {!simplified && [0, 1, 2, 3, 4].map((line) => (
+        <span className="staff-line" key={line} style={{ bottom: `${18 + line * 14}%` }} />
+      ))}
+      {note && <span className="staff-note" style={{ bottom: simplified ? '44%' : `${bottom}%` }} />}
+    </div>
+  )
+}
+
+function TheorySwitcher({ level, onChange }: { level: TheoryLevel; onChange: (level: TheoryLevel) => void }) {
+  return (
+    <div className="segmented" aria-label="Nivel musical">
+      {THEORY_LEVELS.map((item) => (
+        <button
+          key={item.id}
+          className={level === item.id ? 'active' : ''}
+          onClick={() => onChange(item.id)}
+          title={item.description}
+        >
+          {item.label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -196,12 +263,15 @@ function Staff({ note }: { note: MusicalNote | null }) {
 export default function App() {
   const [manualHoles, setManualHoles] = useState([true, true, true, true])
   const [spaceBreath, setSpaceBreath] = useState(0)
+  const [theoryLevel, setTheoryLevel] = useState<TheoryLevel>('play')
+  const [materialId, setMaterialId] = useState<OcarinaMaterial>('ceramic')
   const gamepad = useGamepad()
   const mic = useMicrophoneBreath()
   const holes = gamepad.name ? gamepad.buttons : manualHoles
   const note = useMemo(() => resolveNote(holes), [holes])
   const breath = Math.max(mic.breath, gamepad.breath, spaceBreath)
-  const audio = useOcarinaAudio(note, breath)
+  const material = MATERIAL_PRESETS[materialId]
+  const audio = useOcarinaAudio(note, breath, material)
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -229,36 +299,67 @@ export default function App() {
     <main className="app-shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">BLACKMAMBA LAB · MVP 0.1</p>
+          <p className="eyebrow">BLACKMAMBA LAB · MVP 0.2</p>
           <h1>Ocarina 3D</h1>
-          <p className="subtitle">Digitación + soplido = nota. Ya no es mockup: es el circuito jugable.</p>
+          <p className="subtitle">El mismo instrumento habla como juego, como tutor y como herramienta musical.</p>
         </div>
         <div className="status-row">
           <span className={gamepad.name ? 'pill live' : 'pill'}>{gamepad.name ? '🎮 Gamepad conectado' : '🎮 Sin gamepad'}</span>
           <span className={mic.status === 'on' ? 'pill live' : 'pill'}>🎙️ Mic: {mic.status}</span>
+          <span className={breath > 0.045 ? 'pill live' : 'pill'}>🫁 Flujo {Math.round(breath * 100)}%</span>
         </div>
       </header>
 
+      <section className="level-bar panel-lite">
+        <div>
+          <span className="mini-label">Lenguaje musical</span>
+          <TheorySwitcher level={theoryLevel} onChange={setTheoryLevel} />
+        </div>
+        <div className="level-explanation">
+          {THEORY_LEVELS.find((item) => item.id === theoryLevel)?.description}
+        </div>
+      </section>
+
       <section className="dashboard">
         <article className="panel score-panel">
-          <div className="panel-title">Pentagrama</div>
-          <Staff note={note} />
+          <div className="panel-title">{theoryLevel === 'play' ? 'Aprende jugando' : 'Lectura musical'}</div>
+          <Staff note={note} level={theoryLevel} />
           <div className="note-readout">
-            <strong>{note?.name ?? '—'}</strong>
-            <span>{note ? `${note.frequency.toFixed(2)} Hz` : 'digitación no mapeada'}</span>
+            <strong>{notePrimaryLabel(note, theoryLevel)}</strong>
+            <span>{noteSecondaryLabel(note, theoryLevel)}</span>
+          </div>
+          <div className="fingering-readout">
+            <span>Digitación</span>
+            <strong>{holeMaskLabel(holes)}</strong>
           </div>
         </article>
 
         <article className="panel model-panel">
-          <div className="panel-title">Ocarina azul · prototipo procedural</div>
-          <div className="canvas-wrap"><OcarinaScene holes={holes} /></div>
+          <div className="panel-title">Ocarina · {material.label}</div>
+          <div className="canvas-wrap"><OcarinaScene holes={holes} breath={breath} material={material} /></div>
           <div className="holes-label">{holeMaskLabel(holes)}</div>
+          <div className="flow-note">Flujo verde = visualización conceptual · CFD vendrá después</div>
         </article>
 
         <article className="panel controls-panel">
           <div className="panel-title">Control vivo</div>
           <div className="breath-meter"><span style={{ width: `${breath * 100}%` }} /></div>
           <div className="metric"><span>Breath</span><strong>{Math.round(breath * 100)}%</strong></div>
+
+          <span className="mini-label">Material / timbre provisional</span>
+          <div className="material-grid">
+            {(Object.keys(MATERIAL_PRESETS) as OcarinaMaterial[]).map((id) => (
+              <button
+                key={id}
+                className={materialId === id ? 'material-button active' : 'material-button'}
+                onClick={() => setMaterialId(id)}
+              >
+                {MATERIAL_PRESETS[id].label}
+              </button>
+            ))}
+          </div>
+
+          <span className="mini-label holes-title">Agujeros</span>
           <div className="hole-buttons">
             {manualHoles.map((closed, index) => (
               <button
@@ -283,7 +384,7 @@ export default function App() {
       </section>
 
       <footer>
-        MVP: input físico → digitación → nota → audio → feedback 3D → pentagrama.
+        MVP 0.2: input físico → digitación → nota → audio → feedback 3D → lenguaje musical por nivel.
       </footer>
     </main>
   )
