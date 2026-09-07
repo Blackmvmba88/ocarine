@@ -12,7 +12,9 @@ export type BreathInputState = {
   stop: () => void
 }
 
-const CALIBRATION_FRAMES = 30
+const CALIBRATION_DURATION_MS = 1200
+const CALIBRATION_PERCENTILE = 0.75
+const NOISE_FLOOR_HEADROOM = 1.1
 const DISPLAY_GAIN = 7.5
 const UI_UPDATE_INTERVAL_MS = 33
 
@@ -97,6 +99,7 @@ export function useBreathInput(): BreathInputState {
 
       const samples = new Uint8Array(analyser.fftSize)
       const calibrationSamples: number[] = []
+      let calibrationStartedAt: number | null = null
       let calibratedNoiseFloor = 0
       let lastUiUpdateAt = 0
 
@@ -111,8 +114,10 @@ export function useBreathInput(): BreathInputState {
 
         const rms = Math.sqrt(sumSquares / samples.length)
         const displayedRaw = Math.min(1, rms * DISPLAY_GAIN)
+        calibrationStartedAt ??= now
+        const calibrationElapsed = now - calibrationStartedAt
 
-        if (calibrationSamples.length < CALIBRATION_FRAMES) {
+        if (calibrationElapsed < CALIBRATION_DURATION_MS) {
           calibrationSamples.push(rms)
 
           if (now - lastUiUpdateAt >= UI_UPDATE_INTERVAL_MS) {
@@ -120,17 +125,20 @@ export function useBreathInput(): BreathInputState {
             setRawLevel(displayedRaw)
             setLevel(0)
           }
-
-          if (calibrationSamples.length === CALIBRATION_FRAMES) {
-            calibratedNoiseFloor = percentile(calibrationSamples, 0.2) * 1.2
+        } else {
+          if (calibrationSamples.length) {
+            calibratedNoiseFloor = percentile(calibrationSamples, CALIBRATION_PERCENTILE) * NOISE_FLOOR_HEADROOM
+            calibrationSamples.length = 0
             setNoiseFloor(Math.min(1, calibratedNoiseFloor * DISPLAY_GAIN))
             setCalibrating(false)
           }
-        } else if (now - lastUiUpdateAt >= UI_UPDATE_INTERVAL_MS) {
-          lastUiUpdateAt = now
-          const aboveAmbient = Math.max(0, rms - calibratedNoiseFloor)
-          setRawLevel(displayedRaw)
-          setLevel(Math.min(1, aboveAmbient * DISPLAY_GAIN))
+
+          if (now - lastUiUpdateAt >= UI_UPDATE_INTERVAL_MS) {
+            lastUiUpdateAt = now
+            const aboveAmbient = Math.max(0, rms - calibratedNoiseFloor)
+            setRawLevel(displayedRaw)
+            setLevel(Math.min(1, aboveAmbient * DISPLAY_GAIN))
+          }
         }
 
         frameRef.current = requestAnimationFrame(sample)

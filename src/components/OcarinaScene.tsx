@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, Suspense, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, useGLTF } from '@react-three/drei'
 
@@ -26,7 +26,10 @@ function useProductionModelAvailable() {
     void fetch(PRODUCTION_MODEL_URL, { method: 'HEAD', cache: 'no-store' })
       .then((response) => {
         const contentType = response.headers.get('content-type') ?? ''
-        if (!cancelled) setAvailable(response.ok && !contentType.includes('text/html'))
+        const usable = response.ok && !contentType.includes('text/html')
+
+        if (usable) useGLTF.preload(PRODUCTION_MODEL_URL)
+        if (!cancelled) setAvailable(usable)
       })
       .catch(() => {
         if (!cancelled) setAvailable(false)
@@ -102,7 +105,13 @@ const OcarinaModel = memo(function OcarinaModel({
 }) {
   return (
     <group rotation={[0.12, -0.2, -0.08]}>
-      {productionModelAvailable ? <ProductionOcarinaBody /> : <ProceduralOcarinaBody />}
+      {productionModelAvailable ? (
+        <Suspense fallback={<ProceduralOcarinaBody />}>
+          <ProductionOcarinaBody />
+        </Suspense>
+      ) : (
+        <ProceduralOcarinaBody />
+      )}
 
       {HOLES.map((hole, index) => (
         <HoleOverlay
