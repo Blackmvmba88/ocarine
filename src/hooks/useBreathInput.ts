@@ -16,6 +16,8 @@ const CALIBRATION_DURATION_MS = 1200
 const CALIBRATION_PERCENTILE = 0.75
 const NOISE_FLOOR_HEADROOM = 1.1
 const DISPLAY_GAIN = 7.5
+const ATTACK_BLEND = 0.55
+const RELEASE_BLEND = 0.22
 const UI_UPDATE_INTERVAL_MS = 33
 
 function percentile(values: number[], ratio: number): number {
@@ -101,6 +103,7 @@ export function useBreathInput(): BreathInputState {
       const calibrationSamples: number[] = []
       let calibrationStartedAt: number | null = null
       let calibratedNoiseFloor = 0
+      let smoothedLevel = 0
       let lastUiUpdateAt = 0
 
       const sample = (now: number) => {
@@ -136,8 +139,12 @@ export function useBreathInput(): BreathInputState {
           if (now - lastUiUpdateAt >= UI_UPDATE_INTERVAL_MS) {
             lastUiUpdateAt = now
             const aboveAmbient = Math.max(0, rms - calibratedNoiseFloor)
+            const targetLevel = Math.min(1, aboveAmbient * DISPLAY_GAIN)
+            const blend = targetLevel >= smoothedLevel ? ATTACK_BLEND : RELEASE_BLEND
+            smoothedLevel += (targetLevel - smoothedLevel) * blend
+
             setRawLevel(displayedRaw)
-            setLevel(Math.min(1, aboveAmbient * DISPLAY_GAIN))
+            setLevel(smoothedLevel)
           }
         }
 
