@@ -1,0 +1,44 @@
+{
+  "revision": "BM-OC-002",
+  "measurement_version": 1,
+  "instrument_serial": "BM-OC-002-PROTOTYPE-001",
+  "operator": "",
+  "captured_at": "",
+  "environment": {
+    "temperature_c": null,
+    "relative_humidity_percent": null
+  },
+  "breath_reference": {
+    "method": "normalized-microphone-envelope",
+    "notes": "Use the same breath reference method for all samples. If a manometer is available, fill breath_pressure_pa instead of or in addition to breath_level."
+  },
+  "criteria": {
+    "tolerance_cents": 10.0,
+    "max_std_dev_cents": 5.0,
+    "min_samples_per_note": 3,
+    "require_breath_reference": true
+  },
+  "measurements": [
+    {"note": "C5", "trial": 1, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "C5", "trial": 2, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "C5", "trial": 3, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "D5", "trial": 1, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "D5", "trial": 2, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "D5", "trial": 3, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "E5", "trial": 1, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "E5", "trial": 2, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "E5", "trial": 3, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "F5", "trial": 1, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "F5", "trial": 2, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "F5", "trial": 3, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "G5", "trial": 1, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "G5", "trial": 2, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "G5", "trial": 3, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "A5", "trial": 1, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "A5", "trial": 2, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "A5", "trial": 3, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "B5", "trial": 1, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "B5", "trial": 2, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null},
+    {"note": "B5", "trial": 3, "measured_hz": null, "breath_level": null, "breath_pressure_pa": null, "hole_diameter_mm": null}
+  ]
+}
