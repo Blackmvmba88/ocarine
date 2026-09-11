@@ -66,7 +66,9 @@ export const BM_OC_002_PROFILE: InstrumentProfile = {
   validationNotes: [
     'Source geometry and acoustic targets live in hardware/ocarina-acoustic-v2/acoustic_design_v2.json.',
     'The Helmholtz model is first-order; the physical print must be tuned with measured Hz/cents under controlled breath pressure.',
-    'Promote this profile to validated only after hole diameters, pressure and repeatability are recorded on the manufactured instrument.',
+    'Use physical_measurements_template.json + analyze_physical_validation.py for the repeatability-aware validation gate.',
+    'Promotion requires C5–B5 to meet the configured pitch tolerance, minimum repeated samples, stability limit and breath-reference requirement.',
+    'Do not promote from a single tuner reading or from first-order acoustic predictions.',
   ],
 }
 
