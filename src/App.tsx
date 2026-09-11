@@ -1,251 +1,391 @@
-import { useEffect, useMemo, useState } from 'react'
-import { OcarinaScene } from './components/OcarinaScene'
-import { Staff } from './components/Staff'
-import { useGamepad } from './hooks/useGamepad'
-import { useMicrophoneBreath } from './hooks/useMicrophoneBreath'
-import { useOcarinaAudio } from './hooks/useOcarinaAudio'
-import { holesToText, PRACTICE_TARGETS, resolveNote, type HoleState } from './music/fingerings'
+import { Canvas } from '@react-three/fiber'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  MATERIAL_PRESETS,
+  THEORY_LEVELS,
+  type MaterialPreset,
+  type OcarinaMaterial,
+  type TheoryLevel,
+} from './instrument'
+import {
+  holeMaskLabel,
+  notePrimaryLabel,
+  noteSecondaryLabel,
+  resolveNote,
+  type MusicalNote,
+} from './music'
 
-const BUTTON_LABELS = ['A', 'B', 'X', 'Y']
-const KEY_BY_HOLE = ['1', '2', '3', '4']
+const HOLE_POSITIONS: [number, number, number][] = [
+  [-0.72, 0.34, 0.78],
+  [-0.24, 0.5, 0.88],
+  [0.28, 0.48, 0.88],
+  [0.76, 0.3, 0.76],
+]
 
-function emptyHoles(): HoleState {
-  return [false, false, false, false]
+function OcarinaScene({
+  holes,
+  breath,
+  material,
+}: {
+  holes: boolean[]
+  breath: number
+  material: MaterialPreset
+}) {
+  const airflowOpacity = 0.08 + breath * 0.5
+
+  return (
+    <Canvas camera={{ position: [0, 0.4, 6], fov: 42 }}>
+      <ambientLight intensity={1.6} />
+      <directionalLight position={[4, 5, 6]} intensity={3} />
+      <pointLight position={[-4, -1, 3]} intensity={18} color="#20ff7a" />
+      <group rotation={[-0.18, -0.18, 0.04]}>
+        <mesh scale={[2.2, 1.25, 0.72]}>
+          <sphereGeometry args={[1, 64, 32]} />
+          <meshStandardMaterial
+            color={material.bodyColor}
+            metalness={material.metalness}
+            roughness={material.roughness}
+          />
+        </mesh>
+        <mesh position={[2.2, 0.08, 0]} rotation={[0, 0, -Math.PI / 2]} scale={[0.55, 0.55, 1.4]}>
+          <coneGeometry args={[0.55, 1.8, 32]} />
+          <meshStandardMaterial
+            color={material.mouthColor}
+            metalness={material.metalness}
+            roughness={material.roughness}
+          />
+        </mesh>
+
+        {breath > 0.015 && (
+          <mesh position={[1.55, 0.08, 0]} rotation={[0, 0, Math.PI / 2]} scale={[1, 1, 0.7 + breath * 0.5]}>
+            <cylinderGeometry args={[0.08, 0.22, 2.4, 20]} />
+            <meshStandardMaterial
+              color="#70ffb0"
+              emissive="#20ff7a"
+              emissiveIntensity={1.5 + breath * 4}
+              transparent
+              opacity={airflowOpacity}
+              roughness={0.1}
+            />
+          </mesh>
+        )}
+
+        {HOLE_POSITIONS.map((position, index) => (
+          <mesh key={index} position={position} scale={holes[index] ? 0.82 : 1}>
+            <sphereGeometry args={[0.24, 32, 16]} />
+            <meshStandardMaterial
+              color={holes[index] ? '#06110b' : '#50ffa0'}
+              emissive={holes[index] ? '#000000' : '#0b6b38'}
+              emissiveIntensity={holes[index] ? 0 : 1.4}
+              roughness={0.38}
+            />
+          </mesh>
+        ))}
+      </group>
+    </Canvas>
+  )
+}
+
+function useGamepad() {
+  const [buttons, setButtons] = useState<boolean[]>([false, false, false, false])
+  const [breath, setBreath] = useState(0)
+  const [name, setName] = useState<string | null>(null)
+
+  useEffect(() => {
+    let frame = 0
+    const poll = () => {
+      const pads = navigator.getGamepads?.() ?? []
+      const pad = Array.from(pads).find(Boolean)
+      if (pad) {
+        setName(pad.id)
+        setButtons([0, 1, 2, 3].map((index) => Boolean(pad.buttons[index]?.pressed)))
+        setBreath(pad.buttons[7]?.value ?? 0)
+      } else {
+        setName(null)
+        setBreath(0)
+      }
+      frame = requestAnimationFrame(poll)
+    }
+    frame = requestAnimationFrame(poll)
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
+  return { buttons, breath, name }
+}
+
+function useMicrophoneBreath() {
+  const [breath, setBreath] = useState(0)
+  const [status, setStatus] = useState<'off' | 'starting' | 'on' | 'error'>('off')
+  const stopRef = useRef<() => void>(() => {})
+
+  const start = useCallback(async () => {
+    if (status === 'on' || status === 'starting') return
+    setStatus('starting')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      })
+      const context = new AudioContext()
+      const analyser = context.createAnalyser()
+      analyser.fftSize = 1024
+      analyser.smoothingTimeConstant = 0.72
+      const source = context.createMediaStreamSource(stream)
+      source.connect(analyser)
+      const data = new Float32Array(analyser.fftSize)
+      let frame = 0
+
+      const sample = () => {
+        analyser.getFloatTimeDomainData(data)
+        let sum = 0
+        for (const value of data) sum += value * value
+        const rms = Math.sqrt(sum / data.length)
+        const normalized = Math.max(0, Math.min(1, (rms - 0.012) / 0.14))
+        setBreath(normalized)
+        frame = requestAnimationFrame(sample)
+      }
+      frame = requestAnimationFrame(sample)
+      stopRef.current = () => {
+        cancelAnimationFrame(frame)
+        stream.getTracks().forEach((track) => track.stop())
+        void context.close()
+        setBreath(0)
+        setStatus('off')
+      }
+      setStatus('on')
+    } catch {
+      setStatus('error')
+    }
+  }, [status])
+
+  useEffect(() => () => stopRef.current(), [])
+  return { breath, status, start, stop: () => stopRef.current() }
+}
+
+function useOcarinaAudio(note: MusicalNote | null, breath: number, material: MaterialPreset) {
+  const contextRef = useRef<AudioContext | null>(null)
+  const oscRef = useRef<OscillatorNode | null>(null)
+  const gainRef = useRef<GainNode | null>(null)
+  const filterRef = useRef<BiquadFilterNode | null>(null)
+  const [ready, setReady] = useState(false)
+
+  const enable = useCallback(async () => {
+    const context = contextRef.current ?? new AudioContext()
+    contextRef.current = context
+    await context.resume()
+    setReady(true)
+  }, [])
+
+  useEffect(() => {
+    const context = contextRef.current
+    if (!context || !ready) return
+    const active = Boolean(note && breath > 0.045)
+
+    if (!active) {
+      const gain = gainRef.current
+      const osc = oscRef.current
+      if (gain && osc) {
+        const now = context.currentTime
+        gain.gain.cancelScheduledValues(now)
+        gain.gain.setTargetAtTime(0.0001, now, 0.025)
+        osc.stop(now + 0.09)
+        oscRef.current = null
+        gainRef.current = null
+        filterRef.current = null
+      }
+      return
+    }
+
+    if (!oscRef.current) {
+      const osc = context.createOscillator()
+      const gain = context.createGain()
+      const filter = context.createBiquadFilter()
+      filter.type = 'bandpass'
+      filter.Q.value = 1.8
+      gain.gain.value = 0.0001
+      osc.connect(filter)
+      filter.connect(gain)
+      gain.connect(context.destination)
+      osc.start()
+      oscRef.current = osc
+      gainRef.current = gain
+      filterRef.current = filter
+    }
+
+    const now = context.currentTime
+    const osc = oscRef.current!
+    const gain = gainRef.current!
+    const filter = filterRef.current!
+    osc.type = material.oscillator
+    osc.frequency.setTargetAtTime(note!.frequency, now, 0.015)
+    filter.frequency.setTargetAtTime(note!.frequency * material.filterMultiplier, now, 0.03)
+    gain.gain.setTargetAtTime((0.025 + breath * 0.16) * material.gainMultiplier, now, 0.025)
+  }, [note, breath, ready, material])
+
+  useEffect(() => () => {
+    try { oscRef.current?.stop() } catch { /* already stopped */ }
+    void contextRef.current?.close()
+  }, [])
+
+  return { ready, enable }
+}
+
+function Staff({ note, level }: { note: MusicalNote | null; level: TheoryLevel }) {
+  const bottom = note ? 18 + note.staffStep * 7 : 18
+  const simplified = level === 'play'
+
+  return (
+    <div className={`staff ${simplified ? 'staff-simplified' : ''}`} aria-label={note ? `Nota ${note.name}` : 'Sin nota'}>
+      {!simplified && [0, 1, 2, 3, 4].map((line) => (
+        <span className="staff-line" key={line} style={{ bottom: `${18 + line * 14}%` }} />
+      ))}
+      {note && <span className="staff-note" style={{ bottom: simplified ? '44%' : `${bottom}%` }} />}
+    </div>
+  )
+}
+
+function TheorySwitcher({ level, onChange }: { level: TheoryLevel; onChange: (level: TheoryLevel) => void }) {
+  return (
+    <div className="segmented" aria-label="Nivel musical">
+      {THEORY_LEVELS.map((item) => (
+        <button
+          key={item.id}
+          className={level === item.id ? 'active' : ''}
+          onClick={() => onChange(item.id)}
+          title={item.description}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 export default function App() {
+  const [manualHoles, setManualHoles] = useState([true, true, true, true])
+  const [spaceBreath, setSpaceBreath] = useState(0)
+  const [theoryLevel, setTheoryLevel] = useState<TheoryLevel>('play')
+  const [materialId, setMaterialId] = useState<OcarinaMaterial>('ceramic')
   const gamepad = useGamepad()
-  const microphone = useMicrophoneBreath()
-  const [keyboardHoles, setKeyboardHoles] = useState<HoleState>(emptyHoles)
-  const [keyboardBreath, setKeyboardBreath] = useState(0)
-  const [learnMode, setLearnMode] = useState(false)
-  const [targetIndex, setTargetIndex] = useState(0)
-  const [hits, setHits] = useState(0)
-
-  const holes = useMemo<HoleState>(
-    () => keyboardHoles.map((closed, index) => closed || gamepad.holes[index]) as HoleState,
-    [keyboardHoles, gamepad.holes],
-  )
-
-  const microphoneBreath = microphone.isBlowing ? microphone.level : 0
-  const breath = Math.max(keyboardBreath, gamepad.breath, microphoneBreath)
-  const breathSource = useMemo(() => {
-    if (breath <= 0) return 'Idle'
-    if (microphoneBreath >= gamepad.breath && microphoneBreath >= keyboardBreath) return 'Microphone'
-    if (gamepad.breath >= keyboardBreath) return 'Gamepad R2'
-    return 'Keyboard / Touch'
-  }, [breath, gamepad.breath, keyboardBreath, microphoneBreath])
-
+  const mic = useMicrophoneBreath()
+  const holes = gamepad.name ? gamepad.buttons : manualHoles
   const note = useMemo(() => resolveNote(holes), [holes])
-  const target = PRACTICE_TARGETS[targetIndex]
-  const { enabled: audioEnabled, enableAudio } = useOcarinaAudio(note.frequency, breath)
-  const active = audioEnabled && breath > 0.03
-  const targetMatched = learnMode && active && note.name === target.note.name
-
-  const setHole = (index: number, value: boolean) => {
-    setKeyboardHoles((previous) => {
-      const next = [...previous] as HoleState
-      next[index] = value
-      return next
-    })
-  }
+  const breath = Math.max(mic.breath, gamepad.breath, spaceBreath)
+  const material = MATERIAL_PRESETS[materialId]
+  const audio = useOcarinaAudio(note, breath, material)
 
   useEffect(() => {
-    if (!targetMatched) return
-
-    const timer = window.setTimeout(() => {
-      setHits((value) => value + 1)
-      setTargetIndex((index) => (index + 1) % PRACTICE_TARGETS.length)
-    }, 420)
-
-    return () => window.clearTimeout(timer)
-  }, [targetMatched, targetIndex])
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const holeIndex = KEY_BY_HOLE.indexOf(event.key)
-      if (holeIndex >= 0) setHole(holeIndex, true)
+    const down = (event: KeyboardEvent) => {
       if (event.code === 'Space') {
         event.preventDefault()
-        setKeyboardBreath(0.78)
+        setSpaceBreath(0.82)
+      }
+      const index = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(event.code)
+      if (index >= 0 && !event.repeat) {
+        setManualHoles((current) => current.map((value, i) => i === index ? !value : value))
       }
     }
-
-    const onKeyUp = (event: KeyboardEvent) => {
-      const holeIndex = KEY_BY_HOLE.indexOf(event.key)
-      if (holeIndex >= 0) setHole(holeIndex, false)
-      if (event.code === 'Space') {
-        event.preventDefault()
-        setKeyboardBreath(0)
-      }
+    const up = (event: KeyboardEvent) => {
+      if (event.code === 'Space') setSpaceBreath(0)
     }
-
-    const releaseAll = () => {
-      setKeyboardHoles(emptyHoles())
-      setKeyboardBreath(0)
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    window.addEventListener('keyup', onKeyUp)
-    window.addEventListener('blur', releaseAll)
-
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
     return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('keyup', onKeyUp)
-      window.removeEventListener('blur', releaseAll)
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
     }
   }, [])
 
   return (
     <main className="app-shell">
-      <header className="topbar">
+      <header className="hero">
         <div>
-          <p className="eyebrow">BLACKMAMBA LAB / PLAYABLE MVP</p>
+          <p className="eyebrow">BLACKMAMBA LAB · MVP 0.2</p>
           <h1>Ocarina 3D</h1>
+          <p className="subtitle">El mismo instrumento habla como juego, como tutor y como herramienta musical.</p>
         </div>
-        <div className={`status-pill ${gamepad.connected ? 'online' : ''}`}>
-          <span className="status-dot" />
-          {gamepad.connected ? 'GAMEPAD CONNECTED' : 'KEYBOARD MODE'}
+        <div className="status-row">
+          <span className={gamepad.name ? 'pill live' : 'pill'}>{gamepad.name ? '🎮 Gamepad conectado' : '🎮 Sin gamepad'}</span>
+          <span className={mic.status === 'on' ? 'pill live' : 'pill'}>🎙️ Mic: {mic.status}</span>
+          <span className={breath > 0.045 ? 'pill live' : 'pill'}>🫁 Flujo {Math.round(breath * 100)}%</span>
         </div>
       </header>
 
-      <Staff note={note} active={active} />
-
-      <section className={`learn-card ${targetMatched ? 'matched' : ''}`}>
+      <section className="level-bar panel-lite">
         <div>
-          <p className="eyebrow">LEARN MODE</p>
-          <h2>{learnMode ? `Play ${target.note.name} / ${target.note.label}` : 'Guided note practice'}</h2>
-          <p className="learn-copy">
-            {learnMode
-              ? `Target fingering: ${holesToText(target.holes)} · hold the fingering and blow.`
-              : 'Turn it on and the tutor will advance only when the requested note is actually played.'}
-          </p>
+          <span className="mini-label">Lenguaje musical</span>
+          <TheorySwitcher level={theoryLevel} onChange={setTheoryLevel} />
         </div>
-        <div className="learn-actions">
-          {learnMode && <strong className="score">HITS {hits}</strong>}
-          <button
-            className="mode-button"
-            onClick={() => {
-              setLearnMode((value) => !value)
-              setTargetIndex(0)
-              setHits(0)
-            }}
-          >
-            {learnMode ? 'STOP LEARN' : 'START LEARN'}
-          </button>
+        <div className="level-explanation">
+          {THEORY_LEVELS.find((item) => item.id === theoryLevel)?.description}
         </div>
       </section>
 
-      <section className="instrument-grid">
-        <div className="scene-card">
-          <OcarinaScene holes={holes} />
-          <div className="scene-caption">
-            <span>drag to rotate · wheel to zoom</span>
-            <strong>{holesToText(holes)}</strong>
+      <section className="dashboard">
+        <article className="panel score-panel">
+          <div className="panel-title">{theoryLevel === 'play' ? 'Aprende jugando' : 'Lectura musical'}</div>
+          <Staff note={note} level={theoryLevel} />
+          <div className="note-readout">
+            <strong>{notePrimaryLabel(note, theoryLevel)}</strong>
+            <span>{noteSecondaryLabel(note, theoryLevel)}</span>
           </div>
-        </div>
-
-        <aside className="telemetry-card">
-          <p className="eyebrow">CURRENT NOTE</p>
-          <div className={`big-note ${active ? 'active' : ''}`}>{note.name}</div>
-          <div className="note-name">{note.label}</div>
-          <div className="frequency">{note.frequency.toFixed(2)} Hz</div>
-
-          <div className="meter-row">
-            <span>BREATH</span>
-            <strong>{Math.round(breath * 100)}%</strong>
+          <div className="fingering-readout">
+            <span>Digitación</span>
+            <strong>{holeMaskLabel(holes)}</strong>
           </div>
-          <div className="meter"><div style={{ width: `${breath * 100}%` }} /></div>
+        </article>
 
-          <div className="telemetry-list">
-            <span>Fingering <b>{holesToText(holes)}</b></span>
-            <span>Breath source <b>{breathSource}</b></span>
-            <span>Gamepad <b>{gamepad.connected ? 'Connected' : 'Offline'}</b></span>
-            <span>
-              Microphone
-              <b>
-                {!microphone.enabled
-                  ? 'Off'
-                  : !microphone.calibrated
-                    ? 'Calibrating'
-                    : microphone.isBlowing
-                      ? `Blowing ${Math.round(microphone.level * 100)}%`
-                      : 'Ready'}
-              </b>
-            </span>
-            <span>Breath gate <b>{microphone.isBlowing ? 'OPEN' : 'CLOSED'}</b></span>
-          </div>
+        <article className="panel model-panel">
+          <div className="panel-title">Ocarina · {material.label}</div>
+          <div className="canvas-wrap"><OcarinaScene holes={holes} breath={breath} material={material} /></div>
+          <div className="holes-label">{holeMaskLabel(holes)}</div>
+          <div className="flow-note">Flujo verde = visualización conceptual · CFD vendrá después</div>
+        </article>
 
-          <div className="engine-actions">
-            <button className="audio-button" onClick={enableAudio} disabled={audioEnabled}>
-              {audioEnabled ? 'AUDIO ENGINE ARMED' : 'ARM AUDIO ENGINE'}
-            </button>
-            <button
-              className="mic-button"
-              onClick={() => void microphone.enableMicrophone()}
-              disabled={!microphone.supported || microphone.enabled}
-            >
-              {!microphone.supported
-                ? 'MIC NOT AVAILABLE'
-                : microphone.enabled
-                  ? microphone.calibrated
-                    ? 'MIC BREATH ARMED'
-                    : 'CALIBRATING ROOM NOISE…'
-                  : 'ARM MICROPHONE BREATH'}
-            </button>
-          </div>
+        <article className="panel controls-panel">
+          <div className="panel-title">Control vivo</div>
+          <div className="breath-meter"><span style={{ width: `${breath * 100}%` }} /></div>
+          <div className="metric"><span>Breath</span><strong>{Math.round(breath * 100)}%</strong></div>
 
-          {microphone.enabled && (
-            <p className="mic-status">
-              {microphone.calibrated
-                ? `Adaptive noise floor ${microphone.noiseFloor.toFixed(4)} · blow across the phone microphone.`
-                : 'Keep the phone still and quiet for a moment while the room noise is learned.'}
-            </p>
-          )}
-          {microphone.error && <p className="mic-error">{microphone.error}</p>}
-        </aside>
-      </section>
-
-      <section className="controller-card">
-        <div className="controller-heading">
-          <div>
-            <p className="eyebrow">LIVE CONTROLLER</p>
-            <h2>Hold holes + blow</h2>
-          </div>
-          <p className="controller-id">{gamepad.id}</p>
-        </div>
-
-        <div className="controls-row">
-          <div className="face-buttons">
-            {BUTTON_LABELS.map((label, index) => (
+          <span className="mini-label">Material / timbre provisional</span>
+          <div className="material-grid">
+            {(Object.keys(MATERIAL_PRESETS) as OcarinaMaterial[]).map((id) => (
               <button
-                key={label}
-                className={holes[index] ? 'face-button pressed' : 'face-button'}
-                onPointerDown={() => setHole(index, true)}
-                onPointerUp={() => setHole(index, false)}
-                onPointerLeave={() => setHole(index, false)}
+                key={id}
+                className={materialId === id ? 'material-button active' : 'material-button'}
+                onClick={() => setMaterialId(id)}
               >
-                {label}
-                <small>{KEY_BY_HOLE[index]}</small>
+                {MATERIAL_PRESETS[id].label}
               </button>
             ))}
           </div>
 
-          <button
-            className={`blow-button ${keyboardBreath > 0 ? 'pressed' : ''}`}
-            onPointerDown={() => setKeyboardBreath(0.82)}
-            onPointerUp={() => setKeyboardBreath(0)}
-            onPointerLeave={() => setKeyboardBreath(0)}
-          >
-            <span>R2 / SPACE</span>
-            <strong>BLOW</strong>
-          </button>
-        </div>
-
-        <p className="hint">
-          Gamepad: A/B/X/Y close the four holes, R2 controls breath. Keyboard: 1/2/3/4 + Space. On a phone, arm the microphone, wait for calibration, then blow across the mic while holding the fingering.
-        </p>
+          <span className="mini-label holes-title">Agujeros</span>
+          <div className="hole-buttons">
+            {manualHoles.map((closed, index) => (
+              <button
+                key={index}
+                className={closed ? 'hole-button closed' : 'hole-button'}
+                disabled={Boolean(gamepad.name)}
+                onClick={() => setManualHoles((current) => current.map((value, i) => i === index ? !value : value))}
+              >
+                {index + 1}<small>{closed ? 'cerrado' : 'abierto'}</small>
+              </button>
+            ))}
+          </div>
+          <p className="hint">Teclado: 1–4 alternan agujeros · ESPACIO sopla · Gamepad A/B/X/Y + RT.</p>
+          <div className="actions">
+            <button className="primary" onClick={audio.enable}>{audio.ready ? 'Audio activo ✓' : 'Activar audio'}</button>
+            {mic.status !== 'on'
+              ? <button onClick={mic.start}>{mic.status === 'starting' ? 'Abriendo mic…' : 'Activar soplido real'}</button>
+              : <button onClick={mic.stop}>Apagar mic</button>}
+          </div>
+          {mic.status === 'error' && <p className="error">No se pudo abrir el micrófono. Revisa permisos HTTPS/navegador.</p>}
+        </article>
       </section>
+
+      <footer>
+        MVP 0.2: input físico → digitación → nota → audio → feedback 3D → lenguaje musical por nivel.
+      </footer>
     </main>
   )
 }
