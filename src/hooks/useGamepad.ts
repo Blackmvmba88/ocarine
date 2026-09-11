@@ -1,68 +1,61 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { HoleState } from '../music/fingerings'
 
-type GamepadState = {
+export interface GamepadState {
   connected: boolean
   id: string
-  pressedButtons: number[]
+  holes: HoleState
+  breath: number
 }
 
 const EMPTY_STATE: GamepadState = {
   connected: false,
-  id: 'Sin control conectado',
-  pressedButtons: [],
-}
-
-function sameButtons(left: number[], right: number[]) {
-  return left.length === right.length && left.every((button, index) => button === right[index])
+  id: 'No gamepad connected',
+  holes: [false, false, false, false],
+  breath: 0,
 }
 
 export function useGamepad(): GamepadState {
   const [state, setState] = useState<GamepadState>(EMPTY_STATE)
+  const frame = useRef<number | null>(null)
 
   useEffect(() => {
-    let frame = 0
-    let lastConnected = false
-    let lastId = EMPTY_STATE.id
-    let lastButtons: number[] = []
-
     const poll = () => {
-      const gamepads = navigator.getGamepads?.() ?? []
-      const gamepad = Array.from(gamepads).find(Boolean)
+      const pads = navigator.getGamepads?.() ?? []
+      const pad = Array.from(pads).find(
+        (candidate): candidate is Gamepad => candidate !== null,
+      )
 
-      if (!gamepad) {
-        if (lastConnected) {
-          lastConnected = false
-          lastId = EMPTY_STATE.id
-          lastButtons = []
-          setState(EMPTY_STATE)
-        }
+      if (!pad) {
+        setState(EMPTY_STATE)
       } else {
-        const pressedButtons: number[] = []
-        for (let index = 0; index < gamepad.buttons.length; index += 1) {
-          if (gamepad.buttons[index]?.pressed) pressedButtons.push(index)
-        }
+        const pressed = (index: number) => Boolean(pad.buttons[index]?.pressed)
+        const trigger = pad.buttons[7]?.value ?? 0
 
-        const changed = !lastConnected
-          || lastId !== gamepad.id
-          || !sameButtons(lastButtons, pressedButtons)
-
-        if (changed) {
-          lastConnected = true
-          lastId = gamepad.id
-          lastButtons = pressedButtons
-          setState({
-            connected: true,
-            id: gamepad.id,
-            pressedButtons,
-          })
-        }
+        setState({
+          connected: true,
+          id: pad.id,
+          holes: [pressed(0), pressed(1), pressed(2), pressed(3)],
+          breath: Math.max(0, Math.min(1, trigger)),
+        })
       }
 
-      frame = requestAnimationFrame(poll)
+      frame.current = requestAnimationFrame(poll)
     }
 
-    frame = requestAnimationFrame(poll)
-    return () => cancelAnimationFrame(frame)
+    const start = () => {
+      if (frame.current === null) poll()
+    }
+
+    window.addEventListener('gamepadconnected', start)
+    window.addEventListener('gamepaddisconnected', start)
+    start()
+
+    return () => {
+      window.removeEventListener('gamepadconnected', start)
+      window.removeEventListener('gamepaddisconnected', start)
+      if (frame.current !== null) cancelAnimationFrame(frame.current)
+    }
   }, [])
 
   return state

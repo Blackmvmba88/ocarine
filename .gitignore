@@ -1,13 +1,4 @@
-node_modules
-dist
+node_modules/
+dist/
 .DS_Store
 *.local
-.env
-.env.*
-!.env.example
-__pycache__/
-*.py[cod]
-
-# Physical prototype measurements are local lab captures.
-hardware/ocarina-acoustic-v2/physical_measurements.json
-hardware/ocarina-acoustic-v2/physical_validation_report.json
