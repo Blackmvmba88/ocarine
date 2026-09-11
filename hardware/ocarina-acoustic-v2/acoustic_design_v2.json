@@ -1,0 +1,52 @@
+{
+  "project": "BlackMamba Ocarina",
+  "revision": "BM-OC-002",
+  "units": "mm",
+  "intent": "acoustic calibration prototype, not final concert tuning",
+  "outer": {
+    "overall_length": 180.0,
+    "body_center_x": 111.8919,
+    "body_axes": [136.2162, 56.0432, 48.2595],
+    "mouthpiece_length": 64.2162,
+    "mouthpiece_tip_diameter": 23.0,
+    "mouthpiece_base_diameter": 35.8
+  },
+  "cavity": {
+    "center": [111.8919, 0.0, 0.0],
+    "axes": [100.0, 42.0, 35.4204],
+    "target_volume_cc": 77.8935
+  },
+  "voicing": {
+    "windway_start": [1.5, 0.0, 0.0],
+    "windway_end": [73.5, 0.0, -16.0],
+    "windway_width": 9.5,
+    "windway_height": 1.4,
+    "window_center": [79.0, 0.0, -16.0],
+    "window_length": 14.0,
+    "window_width": 8.0,
+    "effective_window_length": 5.5,
+    "labium_tip_x": 84.8,
+    "labium_tip_thickness": 0.45,
+    "labium_angle_deg": 35.0
+  },
+  "acoustics": {
+    "speed_of_sound_m_s": 343.0,
+    "end_correction_factor": 1.7,
+    "finger_hole_effective_wall": 3.0,
+    "closed_note": {"name": "C5", "frequency_hz": 523.251},
+    "opening_order": [
+      {"id": "H1", "note": "D5", "frequency_hz": 587.330, "center": [74.9189, 9.7297, 19.4595]},
+      {"id": "H2", "note": "E5", "frequency_hz": 659.255, "center": [90.4865, -1.9459, 21.7946]},
+      {"id": "H3", "note": "F5", "frequency_hz": 698.456, "center": [108.0, 7.7838, 22.5730]},
+      {"id": "H4", "note": "G5", "frequency_hz": 783.991, "center": [125.5135, -3.8919, 21.7946]},
+      {"id": "H5", "note": "A5", "frequency_hz": 880.0, "center": [141.0811, 7.7838, 19.4595]},
+      {"id": "H6", "note": "B5", "frequency_hz": 987.767, "center": [152.7568, -3.8919, 17.1243]}
+    ]
+  },
+  "manufacturing": {
+    "prototype_material": "PETG or tough resin",
+    "pilot_hole_reduction": 0.4,
+    "minimum_shell_target": 3.0,
+    "tuning_method": "print holes undersize, measure with tuner, enlarge gradually"
+  }
+}

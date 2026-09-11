@@ -1,0 +1,41 @@
+.control-profile-card {
+  display: grid;
+  gap: 8px;
+  padding: 13px 14px;
+  border: 1px solid #262626;
+  border-radius: 16px;
+  background: #101010;
+}
+
+.control-profile-card small {
+  color: #727272;
+  font-size: 9px;
+  letter-spacing: .18em;
+}
+
+.control-profile-card select {
+  width: 100%;
+  appearance: none;
+  border: 1px solid #343434;
+  border-radius: 10px;
+  background: #171717;
+  color: #f4f4f4;
+  padding: 9px 34px 9px 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #ff67a9 50%),
+    linear-gradient(135deg, #ff67a9 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 50%,
+    calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.control-profile-card select:focus-visible {
+  outline: 2px solid #ff4f9a;
+  outline-offset: 2px;
+}
