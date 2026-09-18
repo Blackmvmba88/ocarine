@@ -43,10 +43,12 @@ The MVP assumes the browser standard gamepad layout:
 
 | Input | Musical function |
 | --- | --- |
-| A | Hole 1 |
-| B | Hole 2 |
-| X | Hole 3 |
-| Y | Hole 4 |
+| A | H1 |
+| B | H2 |
+| X | H3 |
+| Y | H4 |
+| LB | H5 |
+| RB | H6 |
 | R2 | Breath / volume |
 
 The four face buttons are interpreted as closed holes while held.
@@ -55,27 +57,31 @@ The four face buttons are interpreted as closed holes while held.
 
 | Input | Musical function |
 | --- | --- |
-| 1 | Hole 1 |
-| 2 | Hole 2 |
-| 3 | Hole 3 |
-| 4 | Hole 4 |
+| 1 | H1 |
+| 2 | H2 |
+| 3 | H3 |
+| 4 | H4 |
+| 5 | H5 |
+| 6 | H6 |
 | Space | Breath |
 
 The on-screen buttons expose the same controls for touch or mouse testing.
 
 ## Current fingering map
 
-The first mapping deliberately keeps the musical model small while the input/audio/visual loop is validated:
+The active mapping now follows the BM-OC-002 progressive-opening contract:
 
 ```text
-● ● ● ● -> C4
-● ● ● ○ -> D4
-● ● ○ ○ -> E4
-● ○ ○ ○ -> F4
-○ ○ ○ ○ -> G4
+● ● ● ● ● ● -> C5
+○ ● ● ● ● ● -> D5
+○ ○ ● ● ● ● -> E5
+○ ○ ○ ● ● ● -> F5
+○ ○ ○ ○ ● ● -> G5
+○ ○ ○ ○ ○ ● -> A5
+○ ○ ○ ○ ○ ○ -> B5
 ```
 
-Non-progressive combinations currently fall back to a note based on the number of closed holes. This is an MVP behavior, not the final ocarina fingering model.
+Non-progressive combinations are intentionally left unmapped. The runtime only resolves the canonical cumulative H1→H6 opening sequence until physical calibration says otherwise.
 
 ## Learn mode
 
@@ -91,9 +97,9 @@ A target only advances after the correct note is sounding with breath above the 
 
 ## 3D strategy
 
-The MVP uses a procedural ocarina made from Three.js primitives so development does not block on a production `.glb` model. The four visible holes react immediately to input.
+The runtime now attempts to load `public/models/BM-OC-002.glb` as the production digital twin. If the asset is not present yet, it falls back to the procedural body so software work does not block on Blender.
 
-The production asset can later replace the procedural mesh without changing the musical/input contracts.
+H1–H6 remain interactive in both modes, and the production GLB is still considered a prototype until the physical pitch/repeatability gate passes.
 
 ## CI
 
@@ -113,8 +119,8 @@ The build command performs the TypeScript check before the Vite production build
 - [x] Orbit / zoom camera controls
 - [x] Live gamepad polling
 - [x] Keyboard and touch fallback
-- [x] Four-hole visual state
-- [x] Fingering-to-note resolver
+- [x] Six-hole BM-OC-002 visual state
+- [x] BM-OC-002 C5–B5 fingering-to-note resolver
 - [x] Web Audio oscillator voice
 - [x] Breath-controlled gain
 - [x] Microphone breath envelope follower
