@@ -1,4 +1,6 @@
 import { Canvas } from '@react-three/fiber'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { Group } from 'three'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MATERIAL_PRESETS,
@@ -15,12 +17,46 @@ import {
   type MusicalNote,
 } from './music'
 
-const HOLE_POSITIONS: [number, number, number][] = [
-  [-0.72, 0.34, 0.78],
-  [-0.24, 0.5, 0.88],
-  [0.28, 0.48, 0.88],
-  [0.76, 0.3, 0.76],
-]
+const BM_OC_002_MODEL_URL = '/models/BM-OC-002.glb'
+const BM_OC_002_MODEL_SCALE = 20
+const BM_OC_002_MODEL_OFFSET: [number, number, number] = [-1.8, 0, 0]
+
+// Derived from hardware/ocarina-acoustic-v2/acoustic_design_v2.json.
+// The positions match the 180 mm physical prototype after the Blender export scale.
+const BM_OC_002_HOLES = [
+  { id: 'H1', position: [-0.301622, 0.194594, 0.389190] as [number, number, number], visualRadius: 0.12 },
+  { id: 'H2', position: [0.009730, -0.038918, 0.435892] as [number, number, number], visualRadius: 0.13 },
+  { id: 'H3', position: [0.360000, 0.155676, 0.451460] as [number, number, number], visualRadius: 0.11 },
+  { id: 'H4', position: [0.710270, -0.077838, 0.435892] as [number, number, number], visualRadius: 0.15 },
+  { id: 'H5', position: [1.021622, 0.155676, 0.389190] as [number, number, number], visualRadius: 0.17 },
+  { id: 'H6', position: [1.255136, -0.077838, 0.342486] as [number, number, number], visualRadius: 0.19 },
+] as const
+
+function useBmOc002Model() {
+  const [scene, setScene] = useState<Group | null>(null)
+
+  useEffect(() => {
+    let active = true
+    const loader = new GLTFLoader()
+
+    loader.load(
+      BM_OC_002_MODEL_URL,
+      (gltf) => {
+        if (active) setScene(gltf.scene)
+      },
+      undefined,
+      () => {
+        if (active) setScene(null)
+      },
+    )
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  return scene
+}
 
 function OcarinaScene({
   holes,
@@ -31,6 +67,7 @@ function OcarinaScene({
   breath: number
   material: MaterialPreset
 }) {
+  const productionScene = useBmOc002Model()
   const airflowOpacity = 0.08 + breath * 0.5
 
   return (
@@ -39,22 +76,32 @@ function OcarinaScene({
       <directionalLight position={[4, 5, 6]} intensity={3} />
       <pointLight position={[-4, -1, 3]} intensity={18} color="#20ff7a" />
       <group rotation={[-0.18, -0.18, 0.04]}>
-        <mesh scale={[2.2, 1.25, 0.72]}>
-          <sphereGeometry args={[1, 64, 32]} />
-          <meshStandardMaterial
-            color={material.bodyColor}
-            metalness={material.metalness}
-            roughness={material.roughness}
+        {productionScene ? (
+          <primitive
+            object={productionScene}
+            scale={BM_OC_002_MODEL_SCALE}
+            position={BM_OC_002_MODEL_OFFSET}
           />
-        </mesh>
-        <mesh position={[2.2, 0.08, 0]} rotation={[0, 0, -Math.PI / 2]} scale={[0.55, 0.55, 1.4]}>
-          <coneGeometry args={[0.55, 1.8, 32]} />
-          <meshStandardMaterial
-            color={material.mouthColor}
-            metalness={material.metalness}
-            roughness={material.roughness}
-          />
-        </mesh>
+        ) : (
+          <>
+            <mesh scale={[2.2, 1.25, 0.72]}>
+              <sphereGeometry args={[1, 64, 32]} />
+              <meshStandardMaterial
+                color={material.bodyColor}
+                metalness={material.metalness}
+                roughness={material.roughness}
+              />
+            </mesh>
+            <mesh position={[2.2, 0.08, 0]} rotation={[0, 0, -Math.PI / 2]} scale={[0.55, 0.55, 1.4]}>
+              <coneGeometry args={[0.55, 1.8, 32]} />
+              <meshStandardMaterial
+                color={material.mouthColor}
+                metalness={material.metalness}
+                roughness={material.roughness}
+              />
+            </mesh>
+          </>
+        )}
 
         {breath > 0.015 && (
           <mesh position={[1.55, 0.08, 0]} rotation={[0, 0, Math.PI / 2]} scale={[1, 1, 0.7 + breath * 0.5]}>
@@ -70,9 +117,9 @@ function OcarinaScene({
           </mesh>
         )}
 
-        {HOLE_POSITIONS.map((position, index) => (
-          <mesh key={index} position={position} scale={holes[index] ? 0.82 : 1}>
-            <sphereGeometry args={[0.24, 32, 16]} />
+        {BM_OC_002_HOLES.map((hole, index) => (
+          <mesh key={hole.id} position={hole.position} scale={holes[index] ? 0.82 : 1}>
+            <sphereGeometry args={[hole.visualRadius, 32, 16]} />
             <meshStandardMaterial
               color={holes[index] ? '#06110b' : '#50ffa0'}
               emissive={holes[index] ? '#000000' : '#0b6b38'}
@@ -87,7 +134,7 @@ function OcarinaScene({
 }
 
 function useGamepad() {
-  const [buttons, setButtons] = useState<boolean[]>([false, false, false, false])
+  const [buttons, setButtons] = useState<boolean[]>([false, false, false, false, false, false])
   const [breath, setBreath] = useState(0)
   const [name, setName] = useState<string | null>(null)
 
@@ -98,7 +145,7 @@ function useGamepad() {
       const pad = Array.from(pads).find(Boolean)
       if (pad) {
         setName(pad.id)
-        setButtons([0, 1, 2, 3].map((index) => Boolean(pad.buttons[index]?.pressed)))
+        setButtons([0, 1, 2, 3, 4, 5].map((index) => Boolean(pad.buttons[index]?.pressed)))
         setBreath(pad.buttons[7]?.value ?? 0)
       } else {
         setName(null)
@@ -261,7 +308,7 @@ function TheorySwitcher({ level, onChange }: { level: TheoryLevel; onChange: (le
 }
 
 export default function App() {
-  const [manualHoles, setManualHoles] = useState([true, true, true, true])
+  const [manualHoles, setManualHoles] = useState([true, true, true, true, true, true])
   const [spaceBreath, setSpaceBreath] = useState(0)
   const [theoryLevel, setTheoryLevel] = useState<TheoryLevel>('play')
   const [materialId, setMaterialId] = useState<OcarinaMaterial>('ceramic')
@@ -279,7 +326,7 @@ export default function App() {
         event.preventDefault()
         setSpaceBreath(0.82)
       }
-      const index = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(event.code)
+      const index = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'].indexOf(event.code)
       if (index >= 0 && !event.repeat) {
         setManualHoles((current) => current.map((value, i) => i === index ? !value : value))
       }
@@ -335,7 +382,7 @@ export default function App() {
         </article>
 
         <article className="panel model-panel">
-          <div className="panel-title">Ocarina · {material.label}</div>
+          <div className="panel-title">BM-OC-002 · {material.label}</div>
           <div className="canvas-wrap"><OcarinaScene holes={holes} breath={breath} material={material} /></div>
           <div className="holes-label">{holeMaskLabel(holes)}</div>
           <div className="flow-note">Flujo verde = visualización conceptual · CFD vendrá después</div>
@@ -372,7 +419,7 @@ export default function App() {
               </button>
             ))}
           </div>
-          <p className="hint">Teclado: 1–4 alternan agujeros · ESPACIO sopla · Gamepad A/B/X/Y + RT.</p>
+          <p className="hint">Teclado: 1–6 alternan H1–H6 · ESPACIO sopla · Gamepad A/B/X/Y/LB/RB + RT.</p>
           <div className="actions">
             <button className="primary" onClick={audio.enable}>{audio.ready ? 'Audio activo ✓' : 'Activar audio'}</button>
             {mic.status !== 'on'
@@ -384,7 +431,7 @@ export default function App() {
       </section>
 
       <footer>
-        MVP 0.2: input físico → digitación → nota → audio → feedback 3D → lenguaje musical por nivel.
+        BM-OC-002 bridge: H1–H6 → C5–B5 → audio → GLB/fallback 3D → lenguaje musical por nivel.
       </footer>
     </main>
   )
