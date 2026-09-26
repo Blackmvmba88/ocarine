@@ -9,20 +9,26 @@ export type MusicalNote = {
 }
 
 const NOTE_BY_MASK: Record<number, Omit<MusicalNote, 'frequency'>> = {
-  0b1111: { name: 'C5', midi: 72, staffStep: 0, solfege: 'DO' },
-  0b1110: { name: 'D5', midi: 74, staffStep: 1, solfege: 'RE' },
-  0b1100: { name: 'E5', midi: 76, staffStep: 2, solfege: 'MI' },
-  0b1000: { name: 'F5', midi: 77, staffStep: 3, solfege: 'FA' },
-  0b0000: { name: 'G5', midi: 79, staffStep: 4, solfege: 'SOL' },
+  0b111111: { name: 'C5', midi: 72, staffStep: 0, solfege: 'DO' },
+  0b011111: { name: 'D5', midi: 74, staffStep: 1, solfege: 'RE' },
+  0b001111: { name: 'E5', midi: 76, staffStep: 2, solfege: 'MI' },
+  0b000111: { name: 'F5', midi: 77, staffStep: 3, solfege: 'FA' },
+  0b000011: { name: 'G5', midi: 79, staffStep: 4, solfege: 'SOL' },
+  0b000001: { name: 'A5', midi: 81, staffStep: 5, solfege: 'LA' },
+  0b000000: { name: 'B5', midi: 83, staffStep: 6, solfege: 'SI' },
 }
 
 export function resolveNote(holes: boolean[]): MusicalNote | null {
+  if (holes.length !== 6) return null
+
   const mask = holes.reduce((value, closed, index) => {
     if (!closed) return value
-    return value | (1 << (3 - index))
+    return value | (1 << (holes.length - 1 - index))
   }, 0)
+
   const note = NOTE_BY_MASK[mask]
   if (!note) return null
+
   return {
     ...note,
     frequency: 440 * 2 ** ((note.midi - 69) / 12),
