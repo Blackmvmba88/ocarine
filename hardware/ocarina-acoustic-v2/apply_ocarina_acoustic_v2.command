@@ -17,10 +17,12 @@ fi
 
 "$BLENDER_APP" --background --python "$SCRIPT_DIR/build_ocarina_acoustic_v2.py"
 "$BLENDER_APP" "$SCRIPT_DIR/OCARINA_ACOUSTIC_V2.blend" --background --python "$SCRIPT_DIR/validate_ocarina_acoustic_v2.py"
+"$BLENDER_APP" "$SCRIPT_DIR/OCARINA_ACOUSTIC_V2.blend" --background --python "$SCRIPT_DIR/render_inspection_v2.py"
 "$BLENDER_APP" "$SCRIPT_DIR/OCARINA_ACOUSTIC_V2.blend" --background --python "$SCRIPT_DIR/render_cutaway_v2.py"
 
 mkdir -p "$WEB_MODEL_DIR"
 cp "$SCRIPT_DIR/OCARINA_ACOUSTIC_V2.glb" "$WEB_MODEL_PATH"
 
 echo "V2 terminada dentro de: $SCRIPT_DIR"
+echo "Vista de inspección: $SCRIPT_DIR/OCARINA_ACOUSTIC_V2_INSPECTION.png"
 echo "Modelo web publicado localmente en: $WEB_MODEL_PATH"
