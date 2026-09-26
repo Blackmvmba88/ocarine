@@ -27,6 +27,26 @@ USO EN MAC
 5. Revisa OCARINA_ACOUSTIC_V2_CUTAWAY.png: deben verse cámara, windway,
    ventana inferior y labium sin paredes flotantes.
 
+FIRST PLAYABLE PRINT — PREFLIGHT
+Después del pase Blender, ejecuta:
+
+   python3 preflight_first_playable_print.py
+
+El gate exige:
+- revisión BM-OC-002;
+- H1–H6 y C5–B5 coherentes entre diseño y reporte;
+- agujeros piloto menores que sus diámetros objetivo;
+- shell target >= 3 mm en el contrato de fabricación;
+- windway 1.4 × 9.5 mm, ventana 14 × 8 mm y labium 0.45 mm;
+- geometry_validation_v2.json aprobado;
+- OCARINA_ACOUSTIC_V2.glb existente y no vacío.
+
+Si todo pasa, el reporte first_playable_print_preflight.json cambia a:
+   next_action = PRINT_CALIBRATION_PROTOTYPE
+
+Esto NO significa que la ocarina ya esté acústicamente validada. Solo autoriza
+la primera impresión de calibración.
+
 PRIMERA PRUEBA FÍSICA
 1. Imprime en PETG o resina tenaz, 0.16–0.20 mm de capa.
 2. Mantén los agujeros piloto como salen; no los agrandes antes de probar.
@@ -85,6 +105,8 @@ ARCHIVOS
 - validate_ocarina_acoustic_v2.py inspección de manifold y medidas
 - render_cutaway_v2.py            sección transversal y render técnico
 - apply_ocarina_acoustic_v2.command lanzador Mac
+- preflight_first_playable_print.py gate de fabricación antes de imprimir
+- first_playable_print_preflight.json evidencia generada por el preflight
 - physical_measurements_template.json plantilla de laboratorio C5–B5
 - analyze_physical_validation.py  gate de Hz/cents/repetibilidad/soplido
 - physical_validation_report.json reporte generado después de medir
@@ -96,9 +118,11 @@ REFERENCIAS DE FÍSICA
   https://arxiv.org/abs/1005.3413
 
 SIGUIENTE CHECKPOINT
-- Ejecutar el pase Blender y publicar `public/models/BM-OC-002.glb`.
+- Ejecutar el pase Blender.
+- Pasar preflight_first_playable_print.py.
+- Publicar/copiar OCARINA_ACOUSTIC_V2.glb como public/models/BM-OC-002.glb.
 - Primera impresión de prueba.
 - Capturar 3+ mediciones por C5–B5 con referencia de soplido.
-- Generar `physical_validation_report.json`.
+- Generar physical_validation_report.json.
 - Afinar secuencialmente y repetir hasta que el gate permita promover el perfil.
 - Probar teléfono: micrófono → calibración → soplido → nota → GLB → pentagrama.

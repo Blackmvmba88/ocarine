@@ -154,6 +154,44 @@ def reset_collection():
     return collection
 
 
+def look_at(obj, target):
+    direction = Vector(target) - obj.location
+    obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+
+
+def add_inspection_camera_and_lights(collection):
+    # BM-OC-002 is only 180 mm long. A deterministic close camera prevents the
+    # generated .blend from looking empty when opened or rendered.
+    bpy.ops.object.camera_add(location=(0.105, -0.26, 0.14))
+    camera = bpy.context.object
+    camera.name = "BM_INSPECTION_CAMERA"
+    camera.data.lens = 55
+    camera.data.clip_start = 0.005
+    camera.data.clip_end = 10.0
+    look_at(camera, (0.10, 0.0, 0.0))
+    move_to_collection(camera, collection)
+
+    for name, location, energy, size in (
+        ("BM_KEY_LIGHT", (0.06, -0.12, 0.22), 700.0, 0.12),
+        ("BM_FILL_LIGHT", (0.16, 0.16, 0.10), 450.0, 0.10),
+    ):
+        bpy.ops.object.light_add(type="AREA", location=location)
+        light = bpy.context.object
+        light.name = name
+        light.data.energy = energy
+        light.data.shape = "DISK"
+        light.data.size = size
+        look_at(light, (0.10, 0.0, 0.0))
+        move_to_collection(light, collection)
+
+    scene = bpy.context.scene
+    scene.camera = camera
+    scene.render.resolution_x = 1400
+    scene.render.resolution_y = 900
+    scene.render.resolution_percentage = 100
+    return camera
+
+
 def main():
     collection = reset_collection()
     blue = material("BM_Cobalt_Ceramic_V2", (0.015, 0.055, 0.55, 1.0), metallic=0.12, roughness=0.18)
@@ -224,6 +262,12 @@ def main():
     scene = bpy.context.scene
     scene.unit_settings.system = "METRIC"
     scene.unit_settings.length_unit = "MILLIMETERS"
+    add_inspection_camera_and_lights(collection)
+
+    # Leave the physical shell selected so Blender's "Frame Selected" (Numpad .)
+    # immediately reveals the model when the file is opened interactively.
+    activate(shell)
+
     blend_path = ROOT / "OCARINA_ACOUSTIC_V2.blend"
     glb_path = ROOT / "OCARINA_ACOUSTIC_V2.glb"
     bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
