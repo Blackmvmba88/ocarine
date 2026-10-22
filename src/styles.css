@@ -84,3 +84,5 @@ footer { padding: 18px 4px 0; color: #4f6858; font-size: .78rem; }
   .model-panel { min-height: 360px; }
   .material-grid { grid-template-columns: 1fr; }
 }
+
+.model-status { position: absolute; z-index: 3; top: 40px; left: 18px; right: 18px; margin: 0; font-size: .75rem; color: #9bb4a4; pointer-events: none; }
