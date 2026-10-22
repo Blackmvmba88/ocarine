@@ -28,13 +28,17 @@ function TheorySwitcher({ level, onChange }: { level: TheoryLevel; onChange: (le
 export default function App() {
   const [manualHoles, setManualHoles] = useState([true, true, true, true, true, true])
   const [spaceBreath, setSpaceBreath] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [automaticBreath, setAutomaticBreath] = useState(true)
   const [theoryLevel, setTheoryLevel] = useState<TheoryLevel>('play')
   const [materialId, setMaterialId] = useState<OcarinaMaterial>('ceramic')
   const gamepad = useGamepad()
   const mic = useBreathInput()
   const holes = gamepad.name ? gamepad.buttons : manualHoles
   const note = useMemo(() => resolveNote(holes), [holes])
-  const breath = Math.max(mic.level, gamepad.breath, spaceBreath)
+  const controllerBreath = gamepad.breath > 0.045 ? gamepad.breath
+    : automaticBreath && gamepad.name && gamepad.buttons.some(Boolean) ? 0.75 : 0
+  const breath = Math.max(mic.level, controllerBreath, spaceBreath, playing ? 0.82 : 0)
   const material = MATERIAL_PRESETS[materialId]
   const audio = useOcarinaAudio(note, breath, material)
 
@@ -53,7 +57,7 @@ export default function App() {
     const up = (event: KeyboardEvent) => {
       if (event.code === 'Space') setSpaceBreath(0)
     }
-    const release = () => setSpaceBreath(0)
+    const release = () => { setSpaceBreath(0); setPlaying(false) }
     const visibility = () => { if (document.hidden) release() }
     window.addEventListener('blur', release)
     document.addEventListener('visibilitychange', visibility)
@@ -136,21 +140,33 @@ export default function App() {
             {manualHoles.map((closed, index) => (
               <button
                 key={index}
-                className={closed ? 'hole-button closed' : 'hole-button'}
+                className={holes[index] ? 'hole-button closed' : 'hole-button'}
                 disabled={Boolean(gamepad.name)}
                 onClick={() => setManualHoles((current) => current.map((value, i) => i === index ? !value : value))}
               >
-                {index + 1}<small>{closed ? 'cerrado' : 'abierto'}</small>
+                {index + 1}<small>{holes[index] ? 'cerrado' : 'abierto'}</small>
               </button>
             ))}
           </div>
+          {gamepad.name && <>
+            <p className="hint">Control: {gamepad.name}</p>
+            <label className="hint"><input type="checkbox" checked={automaticBreath} onChange={(event) => setAutomaticBreath(event.target.checked)} /> Soplido automático al pulsar botones</label>
+            {!audio.ready && <p role="status" className="hint">Pulsa Activar audio una vez para tocar con el control.</p>}
+            <p className="hint">Para empezar: mantén A/B/X/Y/LB/RB para DO; suelta A, luego B, X, Y y LB para RE–LA. RT permite soplar con todos sueltos para SI. Las otras combinaciones quedan en silencio.</p>
+          </>}
           <p className="hint">Teclado: 1–6 alternan H1–H6 · ESPACIO sopla · Gamepad A/B/X/Y/LB/RB + RT.</p>
           <div className="actions">
+            <button className="primary" aria-pressed={playing} disabled={!note && !playing} onClick={async () => {
+              if (playing) { setPlaying(false); return }
+              if (await audio.enable()) setPlaying(true)
+            }}>{playing ? 'Detener ■' : 'Tocar nota ▶'}</button>
             <button className="primary" onClick={audio.enable}>{audio.ready ? 'Audio activo ✓' : 'Activar audio'}</button>
             {!mic.enabled
               ? <button disabled={!mic.supported || mic.starting} onClick={mic.start}>{mic.starting ? 'Abriendo mic…' : 'Activar soplido real'}</button>
               : <button onClick={mic.stop}>Apagar mic</button>}
           </div>
+          <p className="hint">Pulsa Tocar nota para escucharla y cambia los agujeros mientras suena. Detener silencia el soplido del botón; si usas micrófono, apágalo para silenciarlo también.</p>
+          {audio.error && <p role="alert" className="error">{audio.error}</p>}
           {mic.calibrating && <p role="status" className="hint">Guarda silencio un momento: estamos midiendo el ruido ambiente.</p>}
           {mic.enabled && !mic.calibrating && <p className="hint">Micrófono calibrado · ruido ambiente {Math.round(mic.noiseFloor * 100)}%. Apágalo y actívalo para recalibrar.</p>}
           {!mic.supported && <p className="hint">El micrófono requiere un navegador compatible en HTTPS o localhost.</p>}

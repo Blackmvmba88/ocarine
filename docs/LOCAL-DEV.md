@@ -14,9 +14,10 @@ Use localhost, or HTTPS for remote devices, to enable microphone access.
 
 ## Playable screen
 
-- Activate audio with the button.
+- Click **Tocar nota** to enable audio and sustain the current note without a microphone; click **Detener** to release button breath. Changing holes changes the sustained note. Leaving the window stops button playback. Microphone/gamepad breath remains independent.
+- You can also activate audio separately for keyboard or microphone playing.
 - Keys 1–6 toggle H1–H6. Hold Space to blow; releasing it or leaving the window stops keyboard breath.
-- Gamepad buttons A/B/X/Y/LB/RB cover H1–H6; RT controls breath. The first connected gamepad takes precedence over manual holes.
+- Gamepad buttons A/B/X/Y/LB/RB cover H1–H6; RT controls breath. Automatic controller breath is enabled by default while any hole button is held; disable it using the checkbox to require RT. Click Activate audio once before playing with the controller. The first connected gamepad takes precedence over manual holes.
 - Enable the microphone and remain quiet for 1.2 seconds during ambient calibration. Disable/re-enable it to recalibrate after moving rooms.
 - Calibration reduces ambient triggers but does not classify speech or guarantee feedback rejection. Test with headphones.
 - All note resolution uses `DEFAULT_INSTRUMENT_PROFILE` (BM-OC-002). Only its seven progressive fingerings sound. The physical instrument remains unvalidated until measured.

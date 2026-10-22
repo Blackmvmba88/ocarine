@@ -8,12 +8,23 @@ export function useOcarinaAudio(note: MusicalNote | null, breath: number, materi
   const gainRef = useRef<GainNode | null>(null)
   const filterRef = useRef<BiquadFilterNode | null>(null)
   const [ready, setReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const enable = useCallback(async () => {
-    const context = contextRef.current ?? new AudioContext()
-    contextRef.current = context
-    await context.resume()
-    setReady(true)
+    try {
+      setError(null)
+      const previous = contextRef.current
+      const context = previous && previous.state !== 'closed' ? previous : new AudioContext()
+      contextRef.current = context
+      await context.resume()
+      if (context.state !== 'running') throw new Error('El navegador mantiene el audio suspendido. Vuelve a pulsar Tocar nota.')
+      setReady(true)
+      return true
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se pudo activar el audio.')
+      setReady(false)
+      return false
+    }
   }, [])
 
   useEffect(() => {
@@ -40,8 +51,8 @@ export function useOcarinaAudio(note: MusicalNote | null, breath: number, materi
       const osc = context.createOscillator()
       const gain = context.createGain()
       const filter = context.createBiquadFilter()
-      filter.type = 'bandpass'
-      filter.Q.value = 1.8
+      filter.type = 'lowpass'
+      filter.Q.value = 0.7
       gain.gain.value = 0.0001
       osc.connect(filter)
       filter.connect(gain)
@@ -67,5 +78,5 @@ export function useOcarinaAudio(note: MusicalNote | null, breath: number, materi
     void contextRef.current?.close()
   }, [])
 
-  return { ready, enable }
+  return { ready, enable, error }
 }
