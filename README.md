@@ -4,6 +4,14 @@
 >
 > Una ocarina virtual en 3D que puedes tocar con un control, soplar con el micrófono y aprender directamente sobre un pentagrama interactivo.
 
+## Estado de la pantalla actual
+
+La pantalla activa integra seis agujeros, teclado/gamepad, audio sintetizado y micrófono con calibración ambiental. Usa el perfil canónico BM-OC-002; las digitaciones no mapeadas permanecen en silencio. El modelo físico GLB debe generarse aparte: cuando falta se identifica la vista provisional.
+
+Los módulos de práctica, grabación, replay y MIDI aún no están conectados a esta pantalla. La afinación del instrumento físico sigue pendiente de mediciones.
+
+Instalación reproducible y controles: [desarrollo local](docs/LOCAL-DEV.md). Comprobaciones: `npm ci`, `npm test`, `npm run build` y el self-test de validación física.
+
 ## 🐍 Visión
 
 **BlackMamba Ocarina 3D** nace de una pregunta simple:

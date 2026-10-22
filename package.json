@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",
@@ -20,7 +21,11 @@
     "@types/react-dom": "^19.1.9",
     "@types/three": "^0.180.0",
     "@vitejs/plugin-react": "^5.0.2",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.2",
     "vite": "^7.1.4"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }
