@@ -3,6 +3,7 @@ import { MATERIAL_PRESETS, THEORY_LEVELS, type OcarinaMaterial, type TheoryLevel
 import { holeMaskLabel, notePrimaryLabel, noteSecondaryLabel, resolveNote } from './music'
 import { OcarinaScene } from './components/OcarinaScene'
 import { Staff } from './components/Staff'
+import { ArcadePanel } from './components/ArcadePanel'
 import { useGamepad } from './hooks/useGamepad'
 import { useBreathInput } from './hooks/useBreathInput'
 import { useOcarinaAudio } from './hooks/useOcarinaAudio'
@@ -95,6 +96,8 @@ export default function App() {
           {THEORY_LEVELS.find((item) => item.id === theoryLevel)?.description}
         </div>
       </section>
+
+      <ArcadePanel note={note?.name ?? null} sounding={audio.ready && breath > 0.045} />
 
       <section className="dashboard">
         <article className="panel score-panel">
