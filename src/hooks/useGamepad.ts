@@ -1,62 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
-import type { HoleState } from '../music/fingerings'
+import { useEffect, useState } from 'react'
 
-export interface GamepadState {
-  connected: boolean
-  id: string
-  holes: HoleState
-  breath: number
-}
-
-const EMPTY_STATE: GamepadState = {
-  connected: false,
-  id: 'No gamepad connected',
-  holes: [false, false, false, false],
-  breath: 0,
-}
-
-export function useGamepad(): GamepadState {
-  const [state, setState] = useState<GamepadState>(EMPTY_STATE)
-  const frame = useRef<number | null>(null)
+export function useGamepad() {
+  const [buttons, setButtons] = useState<boolean[]>([false, false, false, false, false, false])
+  const [breath, setBreath] = useState(0)
+  const [name, setName] = useState<string | null>(null)
 
   useEffect(() => {
+    let frame = 0
     const poll = () => {
       const pads = navigator.getGamepads?.() ?? []
-      const pad = Array.from(pads).find(
-        (candidate): candidate is Gamepad => candidate !== null,
-      )
-
-      if (!pad) {
-        setState(EMPTY_STATE)
+      const pad = Array.from(pads).find(Boolean)
+      if (pad) {
+        setName(pad.id)
+        const next = [0, 1, 2, 3, 4, 5].map((index) => Boolean(pad.buttons[index]?.pressed))
+        setButtons((previous) => previous.every((value, index) => value === next[index]) ? previous : next)
+        setBreath(pad.buttons[7]?.value ?? 0)
       } else {
-        const pressed = (index: number) => Boolean(pad.buttons[index]?.pressed)
-        const trigger = pad.buttons[7]?.value ?? 0
-
-        setState({
-          connected: true,
-          id: pad.id,
-          holes: [pressed(0), pressed(1), pressed(2), pressed(3)],
-          breath: Math.max(0, Math.min(1, trigger)),
-        })
+        setName(null)
+        setBreath(0)
       }
-
-      frame.current = requestAnimationFrame(poll)
+      frame = requestAnimationFrame(poll)
     }
-
-    const start = () => {
-      if (frame.current === null) poll()
-    }
-
-    window.addEventListener('gamepadconnected', start)
-    window.addEventListener('gamepaddisconnected', start)
-    start()
-
-    return () => {
-      window.removeEventListener('gamepadconnected', start)
-      window.removeEventListener('gamepaddisconnected', start)
-      if (frame.current !== null) cancelAnimationFrame(frame.current)
-    }
+    frame = requestAnimationFrame(poll)
+    return () => cancelAnimationFrame(frame)
   }, [])
 
-  return state
+  return { buttons, breath, name }
 }

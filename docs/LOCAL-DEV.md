@@ -1,91 +1,36 @@
-# BlackMamba Ocarina 3D — local development
+# Local development
 
-This runbook targets the active MVP branch: `feat/mvp-foundation`.
-
-## Requirements
-
-- Node.js 22 recommended
-- npm
-- Chromium/Chrome, Edge or Safari with Gamepad API and microphone permissions
-- optional USB/Bluetooth gamepad
-
-## Clone the active branch
+Use Node.js 22.12 or later (the CI uses Node 22 from `.nvmrc`).
 
 ```bash
-git clone --branch feat/mvp-foundation --single-branch https://github.com/Blackmvmba88/ocarine.git
-cd ocarine
-```
-
-If the repository already exists locally:
-
-```bash
-cd ocarine
-git fetch origin
-git switch feat/mvp-foundation
-git pull --ff-only origin feat/mvp-foundation
-```
-
-## Install and validate
-
-```bash
-npm install
+npm ci
+npm test
 npm run build
-```
-
-The production build command runs TypeScript first:
-
-```text
-tsc -b && vite build
-```
-
-## Start development mode
-
-```bash
 npm run dev
 ```
 
-Open the local Vite URL printed in the terminal, normally `http://localhost:5173`.
+The build runs `tsc --noEmit && vite build` and writes to `dist/`.
+Use localhost, or HTTPS for remote devices, to enable microphone access.
 
-Use `localhost` rather than a raw LAN IP when testing microphone breath unless HTTPS is configured, because browser microphone access requires a secure context.
+## Playable screen
 
-## First device pass
+- Activate audio with the button.
+- Keys 1–6 toggle H1–H6. Hold Space to blow; releasing it or leaving the window stops keyboard breath.
+- Gamepad buttons A/B/X/Y/LB/RB cover H1–H6; RT controls breath. The first connected gamepad takes precedence over manual holes.
+- Enable the microphone and remain quiet for 1.2 seconds during ambient calibration. Disable/re-enable it to recalibrate after moving rooms.
+- Calibration reduces ambient triggers but does not classify speech or guarantee feedback rejection. Test with headphones.
+- All note resolution uses `DEFAULT_INSTRUMENT_PROFILE` (BM-OC-002). Only its seven progressive fingerings sound. The physical instrument remains unvalidated until measured.
+- A visible status identifies the procedural view when `public/models/BM-OC-002.glb` is absent. Generate the physical asset using the documented hardware workflow; a fallback is not the manufactured geometry.
 
-1. Click **Activar audio**.
-2. Verify keyboard notes with `Z X C V` and arrow keys.
-3. Connect the gamepad and confirm the connection indicator changes.
-4. Test the default controller profile, then custom remapping.
-5. Click **Usar micrófono**, remain quiet during the short ambient calibration, then blow and confirm the breath meter/gate reacts.
-6. Select a practice section.
-7. Set tempo between 50% and 125%.
-8. Start **Count-in + Loop** and verify the staff cursor and metronome agree.
-9. Record one loop and confirm note, timing and duration scoring.
-10. Export JSON and MIDI and verify the filename/metadata reflects the selected section and actual practice BPM.
+The practice, replay, recording and MIDI modules remain available in source but are not connected to this screen yet.
 
-## Performance notes
+## Manual device checks
 
-The current branch is tuned for local interactive use:
+1. Activate audio, hold Space and open H1, then H2–H6 in sequence: C5 through B5.
+2. Try an unmapped fingering: it should be silent.
+3. Hold Space and switch windows: the breath must return to zero.
+4. Deny mic permission, then retry after granting it. Confirm the error and calibration statuses.
+5. In a quiet room, calibrate without blowing, then check attacks, releases and stop/restart capture.
+6. Connect/disconnect a gamepad and confirm that manual controls return when disconnected.
 
-- idle gamepad polling does not update React state unless connection/button state changes;
-- breath UI publishing is capped to roughly 30 Hz while microphone analysis continues on animation frames;
-- the visual practice clock publishes at roughly 30 Hz;
-- the Three.js scene uses demand rendering instead of continuously redrawing while idle;
-- render DPR is capped at 1.5 to avoid unnecessary Retina GPU load;
-- procedural geometry has reduced segment counts without changing the interaction contract.
-
-## Troubleshooting
-
-### Microphone does not open
-
-Use `localhost`, grant browser microphone permission, and reload the page after changing permission settings.
-
-### Gamepad does not appear
-
-Press a button after connecting it. Some browsers do not expose a gamepad until the user interacts with the controller.
-
-### Audio is silent
-
-Click **Activar audio** first. Browsers block Web Audio startup until a user gesture occurs.
-
-### GitHub Actions is red but local build works
-
-At the time this runbook was written, GitHub Actions was creating the `build` job but failing before any workflow step started. Treat `npm run build` locally as the useful application-level validation until the runner-side issue is resolved.
+Automated build checks do not prove real microphone, audio output, gamepad latency or physical tuning.
